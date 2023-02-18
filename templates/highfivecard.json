@@ -1,0 +1,43 @@
+{
+    "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+    "type": "AdaptiveCard",
+    "version": "1.0",
+    "body": [
+    {
+        "type": "ColumnSet",
+        "columns": [
+        {
+            "type": "Column",
+            "width": "5",
+            "items": [
+            {
+                "type": "TextBlock",
+                "text": "NAME OF PERSON",
+                "size": "large",
+                "horizontalAlignment": "Center",
+                "weight": "Bolder"
+            },
+            {
+                "type": "Image",
+                "url": "High five profile icon here!",
+                "size": "large",
+                "horizontalAlignment": "Center",
+                "style": "person"
+            },
+            {
+                "type": "TextBlock",
+                "text": "🎉",
+                "horizontalAlignment": "Center",
+                "size": "ExtraLarge"
+            }
+            ]
+        }
+        ]
+    }
+    ],
+    "backgroundImage": {
+    "url": "https://gallery.yopriceville.com/var/resizes/Free-Clipart-Pictures/Happy-Birthday-PNG/Confetti_Transparent_Clip_Art_Image.png?m=1542681020",
+    "fillMode": "RepeatHorizontally"
+    }
+}
+  

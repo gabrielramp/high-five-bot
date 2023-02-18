@@ -1,0 +1,47 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.0",
+  "body": [
+    {
+      "type": "ColumnSet",
+      "columns": [
+        {
+          "type": "Column",
+          "width": "5",
+          "items": [
+            {
+              "type": "TextBlock",
+              "text": "NAME OF PERSON",
+              "size": "large",
+              "horizontalAlignment": "Center",
+              "weight": "Bolder"
+            },
+            {
+              "type": "Image",
+              "url": "Birthday profile icon here!",
+              "size": "large",
+              "horizontalAlignment": "Center",
+              "style": "person"
+            },
+            {
+              "type": "TextBlock",
+              "text": "🎉",
+              "horizontalAlignment": "Center",
+              "size": "ExtraLarge"
+            },
+            {
+              "type": "TextBlock",
+              "text": "🎉",
+              "horizontalAlignment": "Center",
+              "size": "ExtraLarge"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "backgroundImage": {
+    "url": "https://www.seekpng.com/png/full/9-90378_confetti-png-images-transparent-pictures-png-only-birthday.png"
+  }
+}
