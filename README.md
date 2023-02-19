@@ -79,7 +79,7 @@ Once submitting a question, the message is deleted and replaced with a freeform 
 
 Simultaneously, the evoker is sent a direct message with a card telling them how to view the freeform submissions:
 
-![image](https://user-images.githubusercontent.com/86631042/219922599-f5ae94c7-9353-4c5c-8fd0-ad69e20c837e.png)
+![image](https://user-images.githubusercontent.com/86631042/219923284-b9018cbe-428c-48ff-84f2-265df17ef3c8.png)
 
 Clicking "View Current Responses" will message the user with all recorded responses:
 
