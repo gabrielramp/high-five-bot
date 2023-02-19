@@ -38,7 +38,6 @@ framework.on("Initialized, coming online...", () => {
 framework.on("spawn", (bot, id, actorId) => {
   if (!actorId) {
     // DONT SAY ANYTHING HERE OR WE SPAM EVERY SPACE EVERY RESTART
-    console.log(`Startup Space: ${bot.room.title}`);
   } else {
     // actorId present means we've been added to a new space.
     // When added to new space:
@@ -70,7 +69,7 @@ framework.hears(
 // Catch-all for unrecognized commands with asterisk as syntax and priority of 99999
 framework.hears (
   /.*/,
-  (bot, trigger) => {
+  async (bot, trigger) => {
     console.log(`Catch-all handler: ${trigger.text}`);
     bot.say(`Sorry, I not sure how to respond to "${trigger.text}".`)
       .then(() => bot.say("markdown", framework.showHelp()))
@@ -231,188 +230,74 @@ framework.hears(
   0,
 )
 
-// 'poll' starts a poll that creates a poll, with arguments separated by quotation marks
-// User should enter first the title, then every poll option in quotation marks i.e ("Favorite Dessert" "Cookies" "Brownies" "Milk")
-// Alrighty, this is the first command that will be handled by another function: submissions to this poll will be handled by our friendly framework.on('attachmentAction') handler function below.
-// TODO: Replace initial message syntax with instead just giving an adaptive card that offers text boxes for input
+// Poll command
 framework.hears (
-  // Triggered by mentioning the bot with command 'poll'
   "poll",
-  (bot, trigger) => {
-    async function pollcreate() {
-    // Initializing our variables for parsing the text.
-    const input = trigger.message.text;
-    console.log(`TRIGGER PERSON: ${trigger.person.id}`)
-    const followupperson = trigger.person.id;
-    const parts = [];
-    let inQuotes = false;
-    let start = 0;
-    
-    // 
-    // Temporary poll creation process start
-    //
-    // The idea of this temporary poll creation process is that we'll take the example message ' "@CX poll "Name of my poll" "Option 1" "Option 2" ',
-    // and parse it such that "Name of my poll" becomes the title of the poll, and the "Option 1" and "Option 2" become the options for the poll.
-    // Ideally, this process will be replaced by an Adaptive Card that takes text input for these.
+  (bot,trigger) => {
+    async function Poll() {
+      // Create new ID for this poll
+      const newPollId = generaterandomString();
 
-    // Loop for every character in the message
-    for (let i = 0; i < input.length; i++) {
-      // If the current text is a quotation mark
-      if (input.charAt(i) === '"') {
-        // Then we'll flip the "inQuotes" flag, which just toggles on and off.
-        inQuotes = !inQuotes;
-      } 
-      else if (input.charAt(i) === ' ' && !inQuotes) {
-        // If the current character is a whitespace and it's not inside quotes,
-        if (start !== i) {
-          // And it's not empty
-          const part = input.substring(start, i);
-          // Then push that character into the array replacing it with nothing.
-          parts.push(part.replace(/"/g, ''));
+      // Create the 'New Poll' Card
+      let newPollCard =
+        {
+          "type": "AdaptiveCard",
+          "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+          "version": "1.3",
+          "body": [
+              {
+                  "type": "TextBlock",
+                  "text": "Create a New Poll 🔖",
+                  "wrap": true,
+                  "size": "Medium",
+                  "weight": "Bolder",
+              },
+              {
+                  "type": "Input.Text",
+                  "label": "Enter your question here:",
+                  "placeholder": "What's everyone's favorite dessert?",
+                  "spacing": "Medium",
+                  "isRequired": true,
+                  "id": "questionBox",
+              },
+              {
+                "type": "Input.Text",
+                "label": "Enter your answers here, each separated by a semicolon:",
+                "placeholder": "Cookies;Brownies;Cake",
+                "spacing": "Medium",
+                "isRequired": true,
+                "id": "answersBox",
+            }
+          ],
+          actions: [
+            {
+              spacing: "Large",
+              type: "Action.Submit",
+              title: "Create Poll",
+              data: {
+                "formType": "pollCreate",
+                "formId": `${newPollId}`,
+                "endpoint": `${process.env.WEBHOOKURL}/submit`,
+                "trigger": trigger
+              }
+            }
+          ]
         }
-        // Then update the character iterator.
-        start = i + 1;
-      }
-    }
 
-    // Add the final part of the input string to the parts array, if there is one
-    if (start < input.length) {
-      const part = input.substring(start);
-      parts.push(part.replace(/"/g, ''));
-    }   
-
-    // And we finish up by removing the first argument of the array, which we know will always be "poll", so it's useless.
-    parts.shift();
-
-    // If we're in a Space, then the first argument will be the mention. We'll remove the "poll" arg here.
-    if (parts[0] == 'poll')
-      parts.shift();
-
-    // Now we set up for the JSON
-    // Choices will be our 'JSON' array of buttons to be appended into our 'pollcard' Adaptive Card template below.
-    let choices = [];
-    for (let i = 1; i < parts.length; i++) {
-      let choice = 
-      {
-        title: parts[i],
-        value: parts[i],
-      };
-      choices.push(choice);
-    }
-
-    // choiceTitles will be a string array of the poll option titles and will be passed to our follow-up cards to be used to display the results of the polls.
-    let choiceTitles = [];
-    for (const part of parts) {
-      choiceTitles.push(part);
-    }
-
-    //
-    // Temporary poll creation process end
-    // 
-
-    // Here we create a random string to identify our new poll.
-    const newpollId = generaterandomString();
-
-    // Here's our pollcard which we'll be changing for the specifications of this poll.
-    // Fairly simple, it'll just have a title and some buttons for submission.
-    let pollcard = 
-    {
-      type: "AdaptiveCard",
-      $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
-      version: "1.0",
-      body: [
-        {
-          type: "TextBlock",
-          text: `From **${trigger.person.firstName}**:\n ${parts[0]}`,
-          wrap: true,
-          size: "Medium",
-          weight: "Default",
-        },
-        {
-          type: "Input.ChoiceSet",
-          choices: choices,
-          placeholder: "Placeholder text",
-          style: "expanded",
-          id: "polloption",
-        },
-      ],
-      actions: [
-        {
-          type: "Action.Submit",
-          title: "Submit",
-          data: {
-            "formType": "pollResponse",
-            "formId": `${newpollId}`,
-            "endpoint": `${process.env.WEBHOOKURL}/submit`
-          }
-        }
-      ]
-    };
-
-    // This card will contain the sensitive details of the new poll and be DMd to the creator for follow-up.
-    let pollfollowupcard = 
-    {
-      type: "AdaptiveCard",
-      $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
-      version: "1.0",
-      body: [
-        {
-          type: "TextBlock",
-          text: `Hi! Your poll "${parts[0]}" is currently running. When you're ready to see results, click the button below.`,
-          wrap: true,
-          size: "Large",
-          weight: "Default",
-        },
-        {
-          type: "TextBlock",
-          text: `Clicking this button will not end the current poll.`,
-          wrap: true,
-          size: "Small",
-          weight: "Default",
-          spacing: "Small",
-        },
-      ],
-      actions: [
-        {
-          type: "Action.Submit",
-          title: "View Current Results",
-          data: {
-            "choiceTitles": choiceTitles,
-            "formTitle": `${parts[0]}`,
-            "formType": "pollrequest",
-            "formId": `${newpollId}`,
-            "endpoint": `${process.env.WEBHOOKURL}/submit`
-          }
-        }
-      ]
-    }
-
-    // Send the poll into the Webex Space it was requested in.
-    await bot.sendCard(
-      pollcard,
-      // Error message if applicable.
-      "pollcard"
-    )
-
-    console.log(`Dming ${followupperson} with the follow-up card: ${pollfollowupcard}.`);
-
-    try {
-      bot.dmCard(followupperson, pollfollowupcard, "This is fallback text if the client can't render this card.");
-    } catch (error) {
-      console.log(`Error DMing the card to ${followupperson}:\n${error}`);
-    }
-
-    console.log(
-      "Poll Created:", parts
-      );
+        // Send the card in chat.
+        bot.sendCard (
+          newPollCard,
+          "New Poll Card"
+        );
     }
     // Call this function.
-    pollcreate();
+    Poll();
   },
-  "**poll**: Syntax: [@mention \"Poll Title\" \"Option 1\" \"Option 2\" \"Option 3\". Supports infinite options.",
+  "**poll**: Create a poll! Command inspired by Pollbot, but they're not open-source, though!",
   0
 )
 
+// Freeform command
 framework.hears (
   // Triggered by mentioning the bot with command 'freeform'
   "freeform",
@@ -536,7 +421,7 @@ framework.on('attachmentAction', async (bot, trigger) => {
       });
 
       // Then we're going to fill in the rest of the possible results; if the choice doesn't exist in the tallyCount then we'll just give it a 0.
-      for (let i = 1; i < choiceTitles.length; i++) {
+      for (let i = 0; i < choiceTitles.length; i++) {
         if (!(choiceTitles[i] in tallyCount)) {
           tallyCount[choiceTitles[i]] = 0;
         }
@@ -552,8 +437,6 @@ framework.on('attachmentAction', async (bot, trigger) => {
       // Starting with dynamicResults, which will be a chunk of Adaptive Card syntax that will contain the options of the poll along with their counts.
       let dynamicResults = [];
       Object.entries(tallyCount).forEach(([selectedOptionTitle, count]) => {
-        console.log(`fitting ${selectedOptionTitle}`);
-        console.log(`specifying ${count}`);
         let singleresult =
           {
             type: "TextBlock",
@@ -787,6 +670,129 @@ framework.on('attachmentAction', async (bot, trigger) => {
       // Error message if applicable.
       "freeformResponsesRequestCard"
     )
+  }
+
+  // Handle pollCreate
+  // Submitted when a user uses @mention poll2 and submits a question and answer for posting.
+  if (formData.formType == "pollCreate") {
+    console.log(`DEBUG: Received freeformCreate type.\n Trigger data:` + formData.trigger.text);
+    // First we'll check if the person that submitted the freeform question also triggered the bot to send it in the first place.
+    if (attachedForm.personId == formData.trigger.person.id) {
+      // Parse the answerBox and questionBox fields of the submission
+      let pollQuestionTitle = formData.questionBox;
+
+      // Here we do a lot with a little to simultaneously split the string by the semicolons, while also removing whitespace that isn't between any words.
+      let pollAnswers = formData.answersBox.split(';').map(word => word.trim()); 
+
+      // Then we'll create the dynamic text for the choices, along with saving the titles for our results card.
+      let choiceTitles = [];
+      let choices = [];
+      for (let i = 0; i < pollAnswers.length; i++) {
+        choiceTitles.push(pollAnswers[i]);
+        let choice = 
+        {
+          title: pollAnswers[i],
+          value: pollAnswers[i],
+        };
+        choices.push(choice);
+      } 
+
+      // Then we'll deleet the "Create a New Freeform Question" message
+      bot.censor(attachedForm.messageId);
+
+      // And send a new card with their question:
+      let pollCard = 
+        {
+          type: "AdaptiveCard",
+          $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+          version: "1.0",
+          body: [
+            {
+              type: "TextBlock",
+              text: `From **${formData.trigger.person.firstName}**:\n ${pollQuestionTitle}`,
+              wrap: true,
+              size: "Medium",
+              weight: "Default",
+            },
+            {
+              type: "Input.ChoiceSet",
+              choices: choices,
+              placeholder: "Placeholder text",
+              style: "expanded",
+              id: "polloption",
+            },
+          ],
+          actions: [
+            {
+              type: "Action.Submit",
+              title: "Submit",
+              data: {
+                "choiceTitles": choiceTitles,
+                "formType": "pollResponse",
+                "formId": `${formData.formId}`,
+                "endpoint": `${process.env.WEBHOOKURL}/submit`
+              }
+            }
+          ]
+        };
+
+        // Send the new pollinto the chat
+        bot.sendCard (
+          pollCard,
+          "New Poll"
+        );
+
+        // This card will contain the sensitive details of the new poll and be DMd to the creator for follow-up.
+      let pollfollowupcard = 
+        {
+          type: "AdaptiveCard",
+          $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+          version: "1.0",
+          body: [
+            {
+              type: "TextBlock",
+              text: `Hi! Your poll "${formData.questionBox}" is currently running. When you're ready to see results, click the button below.`,
+              wrap: true,
+              size: "Large",
+              weight: "Default",
+            },
+            {
+              type: "TextBlock",
+              text: `Clicking this button will not end the current poll.`,
+              wrap: true,
+              size: "Small",
+              weight: "Default",
+              spacing: "Small",
+            },
+          ],
+          actions: [
+            {
+              type: "Action.Submit",
+              title: "View Current Results",
+              data: {
+                "choiceTitles": choiceTitles,
+                "formTitle": `${formData.questionBox}`,
+                "formType": "pollrequest",
+                "formId": `${formData.formId}`,
+                "endpoint": `${process.env.WEBHOOKURL}/submit`
+              }
+            }
+          ]
+        }
+
+      try {
+        bot.dmCard(
+          formData.trigger.person.id, 
+          pollfollowupcard, 
+          "Poll Creation Followup");
+      } catch (error) {
+        console.log(`Error DMing the card to ${formData.trigger.person.id}:\n${error}`);
+      }
+
+    }
+    else {
+      // TODO: Put logic here that happens when someone tries to type to the pollCreate who didn't evoke the bot. (DM user to say this isnt theirs and they can make their own)
+    } 
   }
 });
 
