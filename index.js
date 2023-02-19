@@ -157,7 +157,7 @@ framework.hears(
       console.log("Exited card loop.");
     });
   },
-  "**highfive**: Creates a High Five card for a user. Syntax: 'highfive user@cisco.com' (unlimited arguments)",
+  "**highfive**: Syntax: [@mention highfive [*recipient-email1*]] (support multiple emails). Creates a High Five card for a user!",
   0 // Command Priority
 );
 
@@ -227,7 +227,7 @@ framework.hears(
       console.log("Exited birthday card loop.");
     });
   },
-  "Highlight the birthday person with a virtual card!",
+  "**birthdaycard**: Syntax: [@mention birthdaycard *recipient-email1*]. Highlight the birthday person with a virtual card!",
   0,
 )
 
@@ -341,7 +341,7 @@ framework.hears (
           type: "Action.Submit",
           title: "Submit",
           data: {
-            "formType": "pollitem",
+            "formType": "pollResponse",
             "formId": `${newpollId}`,
             "endpoint": `${process.env.WEBHOOKURL}/submit`
           }
@@ -409,11 +409,70 @@ framework.hears (
     // Call this function.
     pollcreate();
   },
-  "poll",
+  "**poll**: Syntax: [@mention \"Poll Title\" \"Option 1\" \"Option 2\" \"Option 3\". Supports infinite options.",
   0
 )
 
-//
+framework.hears (
+  // Triggered by mentioning the bot with command 'freeform'
+  "freeform",
+  (bot, trigger) => {
+    async function Freeform() {
+
+      // Creating our new ID
+      const newFreeformId = generaterandomString();
+
+      // Creating 'Create Freeform Question' card
+      let freeformCreateCard = 
+        {
+          type: "AdaptiveCard",
+          $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+          version: "1.2",
+          body: [
+              {
+                  type: "TextBlock",
+                  text: "Create a New Freeform Question 💭",
+                  wrap: true,
+                  size: "Medium",
+                  style: "heading",
+                  weight: "Bolder",
+              },
+              {
+                  type: "Input.Text",
+                  placeholder: "\"What was your favorite part of this week?\"",
+                  isMultiline: true,
+                  maxLength: 500,
+                  label: "Enter your question here:",
+                  spacing: "None",
+                  isRequired: true,
+                  id: "freeformSubmission"
+              }
+          ],
+          actions: [
+            {
+              type: "Action.Submit",
+              title: "Submit Question",
+              data: {
+                "formType": "freeformCreate",
+                "formId": `${newFreeformId}`,
+                "endpoint": `${process.env.WEBHOOKURL}/submit`,
+                "trigger": trigger
+              }
+            }
+          ]
+        }
+        bot.sendCard (
+          freeformCreateCard,
+          "freeformCreateCard"
+        );
+    }
+    // Call this function.
+    Freeform()  
+  },
+  "**freeform**: Create a freeform question for your Space to answer. Answers have a limit of 500 characters.",
+  0
+)
+
 // attachmentAction handling
 //
 // Here's our main function where we listen to submission events for polls, freeform submissions, and anything else.
@@ -429,13 +488,13 @@ framework.on('attachmentAction', async (bot, trigger) => {
 
   // And here's some debug information that's hopefully commented out (because there's no current problems!)
   //console.log(`Test Parse: \nType: ${trigger.attachmentAction.type}`);
-  console.log(`Received Attachment:\n${JSON.stringify(trigger.attachmentAction, null, 2)}`);
+  console.log(`\n\n\nReceived Attachment:\n${JSON.stringify(trigger.attachmentAction, null, 2)}`);
 
-  // Handle POLL SUBMISSIONS (pollitem)
+  // Handle POLL SUBMISSIONS (pollRes)
   // Submitted when a user selects an option in a poll and clicks 'Submit'
-  if (formData.formType == "pollitem") {
+  if (formData.formType == "pollResponse") {
     // Log the submission
-    console.log("Handling 'pollitem': Poll Selection Submission");
+    console.log("Handling 'pollResponse': Poll Selection Submission");
     //bot.say(`${attachedForm.id}, you selected ${selectedOption}! (this is a debug message)`);
     submitPollResponse(formData.formId, attachedForm.personId, formData.polloption);
   }
@@ -553,7 +612,199 @@ framework.on('attachmentAction', async (bot, trigger) => {
       console.log (`There was an error reading the poll results for poll ID ${pollId}.\n` + error);
     }
   }
+
+  // Handle freeformCreate
+  // Submitted when a user enters a question into a "Create a freeform response question" card and clicks submit.
+  if (formData.formType == "freeformCreate") {
+    console.log(`DEBUG: Received freeformCreate type.\n Trigger data:` + formData.trigger.text);
+    // First we'll check if the person that submitted the freeform question also triggered the bot to send it in the first place.
+    if (attachedForm.personId == formData.trigger.person.id) {
+      // Then we'll deleet the "Create a New Freeform Question" message
+      bot.censor(attachedForm.messageId);
+
+      // And send a new card with their question:
+      let freeformResponseCard = 
+        {
+          $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+          type: "AdaptiveCard",
+          version: "1.2",
+          body: [
+              {
+                  type: "TextBlock",
+                  text: `From **${formData.trigger.person.firstName}**:`,
+                  wrap: true
+              },
+              {
+                  type: "TextBlock",
+                  size: "Medium",
+                  weight: "Bolder",
+                  text: `${formData.freeformSubmission}`,
+                  horizontalAlignment: "Center",
+                  wrap: true,
+                  style: "heading"
+              },
+              {
+                  type: "Input.Text",
+                  id: "freeformResponse",
+                  maxLength: 500,
+                  placeholder: "Enter your response here",
+                  label: "This response will be anonymous.\nPlease enter your response below:",
+                  isMultiline: true,
+              }
+          ],
+          actions: [
+            {
+              type: "Action.Submit",
+              title: "Submit Response",
+              data: {
+                "formType": "freeformResponse",
+                "formId": `${formData.formId}`,
+                "endpoint": `${process.env.WEBHOOKURL}/submit`,
+                //"trigger": formData.trigger
+              }
+            }
+          ]
+        }
+      
+      // Send the freeform question into the chat
+      bot.sendCard (
+        freeformResponseCard,
+        "freeformResponseCard"
+      );
+
+      // Send a card to the creator of the freeform question with a freeform question answer retrieval card
+      let freeformFollowupCard = 
+        {
+          type: "AdaptiveCard",
+          $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+          version: "1.0",
+          body: [
+            {
+              type: "TextBlock",
+              text: `Hey! Your freeform question, "${formData.freeformSubmission}" is currently taking responses. When you're ready to see the current submissions, click the button below.`,
+              wrap: true,
+              size: "Large",
+              weight: "Default",
+            },
+            {
+              type: "TextBlock",
+              text: `Clicking this button will not end the freeform question.`,
+              wrap: true,
+              size: "Small",
+              weight: "Default",
+              spacing: "Small",
+            },
+          ],
+          actions: [
+            {
+              type: "Action.Submit",
+              title: "View Current Responses",
+              data: {
+                "formType": "freeformRequest",
+                "formTitle": `${formData.freeformSubmission}`,
+                "formId": `${formData.formId}`,
+                "endpoint": `${process.env.WEBHOOKURL}/submit`
+              }
+            }
+          ]
+        }
+
+        // Then send it their way!
+        bot.dmCard(
+          formData.trigger.person.id, 
+          freeformFollowupCard, 
+          "Freeform Question Followup");
+    }
+    else {
+      // TODO: Put logic here that happens when someone tries to type to the createFreeform who didn't evoke the bot. (DM user to say this isnt theirs and they can make their own)
+    }
+
+  }
+
+  // Handle freeformResponse
+  // Submitted when a user types into a freeform question card and submits their answer.
+  if (formData.formType == "freeformResponse") {
+    // Log the submission
+    console.log("Handling 'freeformResponse': Freeform Question Response");
+    //bot.say(`${attachedForm.id}, you selected ${selectedOption}! (this is a debug message)`);
+    submitFreeformResponse(formData.formId, attachedForm.personId, formData.freeformResponse);
+  }
+
+  // Handle freeformRequest
+  // Submitted when a user clicks the "View Current Responses" button in their follow-up card.
+  if (formData.formType == "freeformRequest") {
+    // More 'concise'ing
+    // formTitle is the string English question from the original poll
+    let formTitle = formData.formTitle;
+    // freeformId is the hex specifier of the original question (and name of the JSON file containing its data)
+    const freeformId = formData.formId;
+
+    // Some logging
+    console.log(`DEBUG: Freeform request made for freeform question ${freeformId}.`);
+
+    // We'll retrieve all of the responses to the submission:
+    let freeformResponses = getFreeformResponses(freeformId);
+    console.log("DEBUG: Retrieved freeformResponses: " + freeformResponses);
+    let freeformResponsesCardText = buildTextFreeformResponsesAnonymous(freeformResponses);
+
+    let freeformResponsesRequestCard =
+      {
+        type: "AdaptiveCard",
+        $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+        version: "1.2",
+        body: [
+          {
+            type: "TextBlock",
+            text: `📝 Here are the responses for your freeform response question, "${formData.formTitle}":`,
+            wrap: true,
+            size: "Large",
+            weight: "Default",
+          },
+          {
+            type: "Container",
+            items: freeformResponsesCardText,
+          },
+        ],
+        actions: [
+          {
+            type: "Action.Submit",
+            title: "View Updated Submissions",
+            data: {
+              "formType": "freeformRequest",
+              "formTitle": `${formData.formTitle}`,
+              "formId": `${formData.formId}`,
+              "endpoint": `${process.env.WEBHOOKURL}/submit`
+            }
+          }
+        ]
+      }
+
+    // Delete the previous followup DM
+    bot.censor(attachedForm.messageId)
+    // Send results
+    bot.sendCard(
+      freeformResponsesRequestCard,
+      // Error message if applicable.
+      "freeformResponsesRequestCard"
+    )
+  }
 });
+
+// buildTextFreeformResponsesAnonymous takes a string array of freeform responses (without a personId) and returns the text block which displays these responses in an Adaptive Card.
+function buildTextFreeformResponsesAnonymous (freeformResponses) {
+  let freeformResponsesCardText = []
+  for (let i = 0; i < freeformResponses.length; i++) {
+    let singleresponse = 
+    {
+      type: "TextBlock",
+      text: `"${freeformResponses[i]}"`,
+      spacing: "Large",
+      size: "Medium",
+    };
+    freeformResponsesCardText.push(singleresponse);
+  }
+  return freeformResponsesCardText;
+}
 
 // This function will find all of the data points in a specific JSON specified by its pollId, and fetch all of the choices made by each user.
 function getPollResults(pollId) {
@@ -604,15 +855,42 @@ function submitPollResponse(pollId, personId, selectedOption) {
   fs.writeFileSync(submissionPath, JSON.stringify(submissions));
 }
 
+// submitFreeformResponse will take a question response and put it into a file associated with its formId.
+function submitFreeformResponse(freeformId, personId, freeformResponse) {
+  const submissionPath = `./submissions/${freeformId}.json`;
 
-framework.hears (
-  "retrievepoll",
-  (bot, trigger) => {
-    console.log("retrievepoll");
-  },
-  "retrievepoll",
-  0
-)
+  let submissions = {};
+
+  // Check if submission file exists, if not, create an empty object
+  if (fs.existsSync(submissionPath)) {
+    submissions = JSON.parse(fs.readFileSync(submissionPath));
+  }
+
+  // Update person's selected option or add new person's selection
+  submissions[personId] = freeformResponse;
+
+  // Write updated submission to file
+  fs.writeFileSync(submissionPath, JSON.stringify(submissions));
+}
+
+// getFreeformResponses will find a file associated with a formId and return a string array of all of the responses.
+function getFreeformResponses(freeformId) {
+  const submissionPath = `./submissions/${freeformId}.json`;
+
+  if (!fs.existsSync(submissionPath)) {
+    return [];
+  }
+
+  const submissions = JSON.parse(fs.readFileSync(submissionPath));
+  const responses = [];
+
+  for (const personId in submissions) {
+    const response = submissions[personId];
+    responses.push(response);
+  }
+
+  return responses;
+}
 
 ///
 ///
