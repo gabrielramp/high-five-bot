@@ -295,7 +295,13 @@ framework.hears (
                 "spacing": "Medium",
                 "isRequired": true,
                 "id": "answersBox",
-            }
+              },
+              {
+                "type": "Input.Toggle",
+                "title": "Anonymous answers",
+                "id": "isAnonymous",
+                "value": "true"
+              }
           ],
           actions: [
             {
@@ -422,55 +428,32 @@ framework.on('attachmentAction', async (bot, trigger) => {
   // Submitted when a user with a follow-up DM from the bot clicks 'View Current Results'; See 'pollfollowupcard' for template and logic.
   if (formData.formType == "pollrequest") {
 
-    // More 'concise'ing
     // choiceTitles is a string array of all possible options in the poll 
     let choiceTitles = formData.choiceTitles;
     // formTitle is the string English title of the original poll
     let formTitle = formData.formTitle;
     // pollId is the hex specifier of the original poll (and name of the JSON file containing its data)
     const pollId = trigger.attachmentAction.inputs.formId;
+    // isAnonymous will determine whether the results will be printed with the names of every person who chose that result under them.
+    const isAnonymous = formData.isAnonymous;
 
     // Some logging
     console.log(`Poll status request made for poll ${pollId}.`);
     console.log("\nResults: ");
 
     // Then we call our handy getPollResults() which will handle gathering all of the data.
-    let failedGetPollResults = 0;
     try {
-      const results = getPollResults(pollId);
-      
-
-      // Then here, we'll count how many times each option was selected.
-      // tallycount will contain a key-pair of an 'selectedOptionTitle': 'count'
-      const tallyCount = {};
-      Object.keys(results).forEach((personId) => {
-        const selectedOptionTitle = results[personId];
-        console.log(`${personId}: ${selectedOptionTitle}`);
-        if (selectedOptionTitle in tallyCount) {
-          tallyCount[selectedOptionTitle]++;
-        }
-        else {
-          tallyCount[selectedOptionTitle] = 1;
-        }
-      });
-
-      // Then we're going to fill in the rest of the possible results; if the choice doesn't exist in the tallyCount then we'll just give it a 0.
-      for (let i = 0; i < choiceTitles.length; i++) {
-        if (!(choiceTitles[i] in tallyCount)) {
-          tallyCount[choiceTitles[i]] = 0;
-        }
-      }
-      
-      // Display the counts in console by looping for the amount of selectedOptionTitles there are in tallyCount.
-      console.log(`Tally for poll ${pollId}:`);
-      Object.entries(tallyCount).forEach(([selectedOptionTitle, count]) => {
-        console.log(`${selectedOptionTitle}: ${count}`);
-      });
+      const results = await getPollResults(pollId, isAnonymous);
 
       // Here we're going to create our template card for displaying the results of a poll,
-      // Starting with dynamicResults, which will be a chunk of Adaptive Card syntax that will contain the options of the poll along with their counts.
+      // Starting with dynamicResults, which will be a chunk of Adaptive Card syntax that will contain the options of the poll along with their counts and selectors.
       let dynamicResults = [];
-      Object.entries(tallyCount).forEach(([selectedOptionTitle, count]) => {
+      results.forEach((option) => {
+        const count = option.score;
+        const selectedOptionTitle = option.selectedOption;
+        const selectorNames = option.selectors;
+        console.log(`${selectedOptionTitle}: ${count}`);
+        console.log(`Selectors: ${selectorNames.join(', ')}`);
         let singleresult =
           {
             type: "TextBlock",
@@ -479,11 +462,25 @@ framework.on('attachmentAction', async (bot, trigger) => {
             spacing: "Small",
             size: "Medium",
           };
-        dynamicResults.push(singleresult);
+        // If the poll is not anonymous, add a text block below the selectedOptionTitle for displaying the selectors.
+        if (isAnonymous == "false") {
+          const selectorText = selectorNames.join(',');
+          const selectorBlock =
+            {
+              type: "TextBlock",
+              text: selectorText,
+              weight: "Lighter",
+              spacing: "Small",
+              size: "Small",
+              wrap: true,
+            };
+          dynamicResults.push(singleresult, selectorBlock);
+        } 
+        else {
+          dynamicResults.push(singleresult);
+        }
       });
 
-      // debug
-      // console.log(`Dynamic Results::: \n\n${dynamicResults}\n\n`);
 
       // Followed by our actual Adaptive Card template.
       let pollresults =
@@ -509,6 +506,7 @@ framework.on('attachmentAction', async (bot, trigger) => {
             type: "Action.Submit",
             title: "View Updated Results",
             data: {
+              "isAnonymous": isAnonymous,
               "choiceTitles": choiceTitles,
               "formTitle": `${formTitle}`,
               "formType": "pollrequest",
@@ -734,6 +732,21 @@ framework.on('attachmentAction', async (bot, trigger) => {
   // Submitted when a user uses @mention poll2 and submits a question and answer for posting.
   if (formData.formType == "pollCreate") {
     console.log(`DEBUG: Received freeformCreate type.\n Trigger data:` + formData.trigger.text);
+
+    let anonFlag = 1;
+    let anonText = "";
+    let anonFollowupText = "";
+    // isAnonymous flag handling
+    if (formData.isAnonymous == "true") {
+      anonText = `Your choice will be anonymous.`;
+      anonFollowupText = `Submissions to your poll will be anonymous.`;
+    }
+    else {
+      anonFlag = 0;
+      anonText = `The creator of this poll will see your selection.`;
+      anonFollowupText = `Submissions will not be anonymous.`;
+    }
+
     // First we'll check if the person that submitted the freeform question also triggered the bot to send it in the first place.
     if (attachedForm.personId == formData.trigger.person.id) {
       // Parse the answerBox and questionBox fields of the submission
@@ -779,12 +792,21 @@ framework.on('attachmentAction', async (bot, trigger) => {
               style: "expanded",
               id: "polloption",
             },
+            {
+              type: "TextBlock",
+              text: `${anonText}`,
+              wrap: true,
+              size: "Small",
+              weight: "Default",
+              spacing: "Medium",
+            },
           ],
           actions: [
             {
               type: "Action.Submit",
               title: "Submit",
               data: {
+                "isAnonymous": formData.isAnonymous,
                 "choiceTitles": choiceTitles,
                 "formType": "pollResponse",
                 "formId": `${formData.formId}`,
@@ -809,7 +831,7 @@ framework.on('attachmentAction', async (bot, trigger) => {
           body: [
             {
               type: "TextBlock",
-              text: `Hi! Your poll "${formData.questionBox}" is currently running. When you're ready to see results, click the button below.`,
+              text: `Hi! Your poll "${formData.questionBox}" is currently running. When you're ready to see results, click the button below.\n${anonFollowupText}`,
               wrap: true,
               size: "Large",
               weight: "Default",
@@ -828,6 +850,7 @@ framework.on('attachmentAction', async (bot, trigger) => {
               type: "Action.Submit",
               title: "View Current Results",
               data: {
+                "isAnonymous": formData.isAnonymous,
                 "choiceTitles": choiceTitles,
                 "formTitle": `${formData.questionBox}`,
                 "formType": "pollrequest",
@@ -870,8 +893,49 @@ function buildTextFreeformResponsesAnonymous (freeformResponses) {
   return freeformResponsesCardText;
 }
 
+async function getPollResults(pollId, isAnonymous) {
+  const filePath = `./submissions/${pollId}.json`;
+
+  try {
+    const fileContents = fs.readFileSync(filePath, 'utf-8');
+    const pollData = JSON.parse(fileContents);
+    const results = [];
+
+    const selectorsByOption = {};
+    for (const [personId, selectedOption] of Object.entries(pollData)) {
+      if (!selectorsByOption[selectedOption]) {
+        selectorsByOption[selectedOption] = {
+          selectors: [],
+          score: 0,
+        };
+      }
+      selectorsByOption[selectedOption].selectors.push(personId);
+      selectorsByOption[selectedOption].score++;
+    }
+
+    for (const [selectedOption, selectors] of Object.entries(selectorsByOption)) {
+      const selectorNames = await Promise.all(selectors.selectors.map(async (personId) => {
+        const personDetails = await getPersonDetails(personId);
+        console.log(`Resolved personId ${personId} to firstName ${personDetails.firstName}`);
+        return personDetails.firstName;
+      }));
+      console.log(`Selectors for ${selectedOption}: ${selectorNames.join(', ')}`);
+      results.push({
+        selectedOption: selectedOption,
+        selectors: selectorNames,
+        score: selectors.score,
+      });
+    }
+
+    return results;
+  } catch (error) {
+    throw error;
+  }
+}
+
+
 // This function will find all of the data points in a specific JSON specified by its pollId, and fetch all of the choices made by each user.
-function getPollResults(pollId) {
+/*function getPollResults(pollId, isAnonymous) {
   // Assuming the JSON files are stored in a directory called 'polls'
   const filePath = `./submissions/${pollId}.json`;
 
@@ -896,7 +960,7 @@ function getPollResults(pollId) {
     throw error;
     return null;
   }
-}
+}*/
 
 // This logic here is where we take items from a poll response and organize the data.
 // From a poll submission, that poll's ID, that person's ID, and their selected option is taken and put into a JSON.
