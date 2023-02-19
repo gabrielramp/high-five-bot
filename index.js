@@ -12,6 +12,14 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
+///
+/// IMPORTANT INFORMATION:
+/// Hello! Thanks for looking at my bot code. There are a lot of things that I'm doing for the first time in code here,
+/// including HTTP requests, API interaction, even JavaScript and Node.js! (I usually code in C and Python.)
+/// So, if you see any code that could be expressed more efficiently or concisely, please submit a PR!
+/// Thank you, Gabe
+///
+
 // Configuration
 const config = {
   webhookUrl: process.env.WEBHOOKURL,
@@ -351,7 +359,13 @@ framework.hears (
                   spacing: "None",
                   isRequired: true,
                   id: "freeformSubmission"
-              }
+              },
+              {
+                "type": "Input.Toggle",
+                "title": "Anonymous submissions",
+                "id": "isAnonymous",
+                "value": "true"
+              } 
           ],
           actions: [
             {
@@ -519,11 +533,29 @@ framework.on('attachmentAction', async (bot, trigger) => {
   // Handle freeformCreate
   // Submitted when a user enters a question into a "Create a freeform response question" card and clicks submit.
   if (formData.formType == "freeformCreate") {
-    console.log(`DEBUG: Received freeformCreate type.\n Trigger data:` + formData.trigger.text);
+    console.log(`DEBUG: Received freeformCreate type.`);
     // First we'll check if the person that submitted the freeform question also triggered the bot to send it in the first place.
     if (attachedForm.personId == formData.trigger.person.id) {
       // Then we'll deleet the "Create a New Freeform Question" message
       bot.censor(attachedForm.messageId);
+
+      // Anonymous text changes depending on whether the question is anonymous or not
+      console.log(`isAnonymous: ${formData.isAnonymous}`);
+      let anonText = "";
+      let anonFollowupText = "";
+      var anonFlag = 1;
+
+      if (formData.isAnonymous == "true") {
+        console.log(`if-else isAnonymous: read TRUE`);
+        anonText = `This response will be anonymous.`;
+        anonFollowupText = `Submissions to your question will be anonymous.`;
+      }
+      else {
+        console.log(`if-else isAnonymous: read FALSE`);
+        anonFlag = 0;
+        anonText = `This response will NOT be anonymous.`;
+        anonFollowupText = `Submissions will not be anonymous.`;
+      }
 
       // And send a new card with their question:
       let freeformResponseCard = 
@@ -551,7 +583,7 @@ framework.on('attachmentAction', async (bot, trigger) => {
                   id: "freeformResponse",
                   maxLength: 500,
                   placeholder: "Enter your response here",
-                  label: "This response will be anonymous.\nPlease enter your response below:",
+                  label: `${anonText}\nPlease enter your response below:`,
                   isMultiline: true,
               }
           ],
@@ -560,10 +592,10 @@ framework.on('attachmentAction', async (bot, trigger) => {
               type: "Action.Submit",
               title: "Submit Response",
               data: {
+                "anonFlag": `${anonFlag}`,
                 "formType": "freeformResponse",
                 "formId": `${formData.formId}`,
                 "endpoint": `${process.env.WEBHOOKURL}/submit`,
-                //"trigger": formData.trigger
               }
             }
           ]
@@ -584,7 +616,9 @@ framework.on('attachmentAction', async (bot, trigger) => {
           body: [
             {
               type: "TextBlock",
-              text: `Hey! Your freeform question, "${formData.freeformSubmission}" is currently taking responses. When you're ready to see the current submissions, click the button below.`,
+              text: `Hey! Your freeform question, "${formData.freeformSubmission}" is currently taking responses.
+                    \nWhen you're ready to see the current submissions, click the button below.
+                    \n${anonFollowupText}`,
               wrap: true,
               size: "Large",
               weight: "Default",
@@ -603,6 +637,7 @@ framework.on('attachmentAction', async (bot, trigger) => {
               type: "Action.Submit",
               title: "View Current Responses",
               data: {
+                "anonFlag": `${anonFlag}`,
                 "formType": "freeformRequest",
                 "formTitle": `${formData.freeformSubmission}`,
                 "formId": `${formData.formId}`,
@@ -642,11 +677,13 @@ framework.on('attachmentAction', async (bot, trigger) => {
     // freeformId is the hex specifier of the original question (and name of the JSON file containing its data)
     const freeformId = formData.formId;
 
+    var anonFlag = formData.anonFlag;
+
     // Some logging
     console.log(`DEBUG: Freeform request made for freeform question ${freeformId}.`);
 
     // We'll retrieve all of the responses to the submission:
-    let freeformResponses = getFreeformResponses(freeformId);
+    let freeformResponses = await getFreeformResponses(freeformId, anonFlag);
     console.log("DEBUG: Retrieved freeformResponses: " + freeformResponses);
     let freeformResponsesCardText = buildTextFreeformResponsesAnonymous(freeformResponses);
 
@@ -673,6 +710,7 @@ framework.on('attachmentAction', async (bot, trigger) => {
             type: "Action.Submit",
             title: "View Updated Submissions",
             data: {
+              "anonFlag": `${anonFlag}`,
               "formType": "freeformRequest",
               "formTitle": `${formData.formTitle}`,
               "formId": `${formData.formId}`,
@@ -882,7 +920,7 @@ function submitPollResponse(pollId, personId, selectedOption) {
 }
 
 // submitFreeformResponse will take a question response and put it into a file associated with its formId.
-async function submitFreeformResponse(freeformId, personId, freeformResponse) {
+function submitFreeformResponse(freeformId, personId, freeformResponse) {
   const submissionPath = `./submissions/${freeformId}.json`;
 
   let submissions = {};
@@ -892,7 +930,7 @@ async function submitFreeformResponse(freeformId, personId, freeformResponse) {
     submissions = JSON.parse(fs.readFileSync(submissionPath));
   }
 
-  // This big pain in the ass will insert a newline character after every 50 characters while ALSO avoiding splitting words by checking for whitespaces
+  // This big pain in the ass will insert a newline character after every 50 characters while ALSO avoiding splitting words by checking for whitespaces.
   let responseWithNewlines = '';
   let lastNewlineIndex = 0;
   for (let i = 50; i < freeformResponse.length; i += 50) {
@@ -925,22 +963,84 @@ async function submitFreeformResponse(freeformId, personId, freeformResponse) {
 }
 
 // getFreeformResponses will find a file associated with a formId and return a string array of all of the responses.
-function getFreeformResponses(freeformId) {
+async function getFreeformResponses(freeformId, anonFlag) {
+  // Find the JSON file associated with the freeformId
   const submissionPath = `./submissions/${freeformId}.json`;
 
+  // Return empty array if file doesn't exist
   if (!fs.existsSync(submissionPath)) {
     return [];
   }
 
+  // Parse the file into an Object array for easy reading
   const submissions = JSON.parse(fs.readFileSync(submissionPath));
-  const responses = [];
 
-  for (const personId in submissions) {
-    const response = submissions[personId];
-    responses.push(response);
+  // Responses will be our string array of responses from the file
+  let responses = [];
+
+  // Now we'll populate Responses
+  try {
+    // Declaring Promises in case our anonFlag is set to 1
+    const promises = [];
+
+    // Now we'll loop for every personId in the submissions object array
+    for (const personId in submissions) {
+      //console.log(`DEBUG getFreeformResponses: getting submissions[personId]: ${submissions[personId]}`);
+      // Take the current response
+      let response = submissions[personId];
+
+      // If these responses are to not be anonymous
+      if (anonFlag == 0) {
+
+        // Then we get the persondetails associated with that personId
+        const promise = getPersonDetails(personId)
+          .then(personData => {
+
+            // And get their name
+            const name = personData.firstName;
+            //console.log(`DEBUG getFreeformResponses: anonFlag: ${anonFlag}; Pushing response data ${name}: ${submissions[personId]}`);
+            //console.log(`DEBUG getFreeformResponses: Responses right after pushing: ${submissions[personId]}`);
+
+            // And push their name into the responses array along with their response!
+            responses.push(`${name}: ${submissions[personId]}`);
+          })
+          .catch(error => {
+            console.log(`DEBUG getFreeformResponses: Error retrieving person details for personId: ${personId}`);
+            console.log(error);
+          });
+
+        // We take this current promise and push it into our promise array.
+        promises.push(promise);
+      }
+      
+      // If our responses ARE anonymous, then we just skip finding the name associated with that personId entirely.
+      else {
+        console.log(`DEBUG getFreeformResponses: anonFlag: ${anonFlag}; Pushing response ${response}`);
+        responses.push(response);
+      }
+    }
+
+    // At the end, we resolve all of our promises so that we can continue using the data.
+    await Promise.all(promises);
+  } catch (error) {
+    console.log("Error retrieving person details on non-anon" + error)
   }
 
+  // and return the responses.
+  console.log(`DEBUG getFreeformResponses: Final responses: ${responses}`);
   return responses;
+}
+
+// getPersonDetails will take a personId, then call the Webex API to return a person's details.
+async function getPersonDetails(personId) {
+  try {
+    // Make a request to the Webex API and return the response
+    const response = await axios.get(`https://webexapis.com/v1/people/${personId}?callingData=true`, httpauth);
+    return response.data;
+  } catch (error) {
+    console.log(`Error retrieving person details for personId: ${personId}` + error);
+    return null;
+  }
 }
 
 ///
@@ -953,7 +1053,7 @@ function getFreeformResponses(freeformId) {
 // We set up our webhook on the Webex API to be able to send and receive data like submissions from a poll.
 // Here's the 'firehose', which will just tell the API that we want to send and receive anything possible.
 const firehose = {
-  name: 'Gabe\'sAwesome Bot Webhook Firehose',
+  name: 'Gabe\'s Awesome Bot Webhook Firehose',
   targetUrl: `${process.env.WEBHOOKURL}`,
   resource: 'all',
   event: 'all',
