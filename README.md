@@ -15,6 +15,16 @@ i.e to evoke the ``poll`` command in a space, type ``@mention poll``.
 
 Here is a list of available commands high-five-bot will handle!
 
+Table of Contents:
+
+[highfive](https://github.com/gabrielramp/high-five-bot/edit/main/README.md#highfive)
+
+[birthdaycard](https://github.com/gabrielramp/high-five-bot/edit/main/README.md#birthdaycard)
+
+[poll](https://github.com/gabrielramp/high-five-bot/edit/main/README.md#poll)
+
+[freeform](https://github.com/gabrielramp/high-five-bot/edit/main/README.md#freeform)
+
 ### highfive
 
 Syntax: ``highfive <recipient-email>``
@@ -73,6 +83,5 @@ Simultaneously, the evoker is sent a direct message with a card telling them how
 
 Clicking "View Current Responses" will message the user with all recorded responses:
 
-
-
+![image](https://user-images.githubusercontent.com/86631042/219923013-4ab506f9-7ba1-44bd-9fe2-78afe6eeee90.png)
 
