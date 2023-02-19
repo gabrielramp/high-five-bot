@@ -56,6 +56,16 @@ framework.on("spawn", (bot, id, actorId) => {
   }
 });
 
+// debug command 'devcls'
+// Prints empty space into the chat for the purpose of allowing demonstrations without distractions in the chat history
+framework.hears (
+  "devcls",
+  async (bot, trigger) => {
+    bot.say("markdown", "\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀");
+  },
+  0
+)
+
 // 'about' command
 framework.hears(
   "about",
@@ -65,6 +75,16 @@ framework.hears(
   "**about**: Show information about this bot",
   0
 );
+
+// 'help' command
+framework.hears (
+  "help",
+  async (bot, trigger) => {
+    bot.say("markdown", framework.showHelp());
+  },
+  "**help**: Show available bot commands.",
+  0
+)
 
 // Catch-all for unrecognized commands with asterisk as syntax and priority of 99999
 framework.hears (
@@ -862,7 +882,7 @@ function submitPollResponse(pollId, personId, selectedOption) {
 }
 
 // submitFreeformResponse will take a question response and put it into a file associated with its formId.
-function submitFreeformResponse(freeformId, personId, freeformResponse) {
+async function submitFreeformResponse(freeformId, personId, freeformResponse) {
   const submissionPath = `./submissions/${freeformId}.json`;
 
   let submissions = {};
@@ -872,8 +892,33 @@ function submitFreeformResponse(freeformId, personId, freeformResponse) {
     submissions = JSON.parse(fs.readFileSync(submissionPath));
   }
 
+  // This big pain in the ass will insert a newline character after every 50 characters while ALSO avoiding splitting words by checking for whitespaces
+  let responseWithNewlines = '';
+  let lastNewlineIndex = 0;
+  for (let i = 50; i < freeformResponse.length; i += 50) {
+    let currentChar = freeformResponse.charAt(i);
+
+    if (currentChar !== ' ' && freeformResponse.charAt(i - 1) !== ' ') {
+      // If the current character is not a space and the previous character is not a space,
+      // find the last whitespace before the current index to insert the newline after
+      let lastWhitespaceIndex = freeformResponse.lastIndexOf(' ', i);
+      if (lastWhitespaceIndex === -1) {
+        // If there are no whitespaces before the current index, insert the newline after the current index
+        responseWithNewlines += freeformResponse.substring(lastNewlineIndex, i) + '\n';
+      } else {
+        responseWithNewlines += freeformResponse.substring(lastNewlineIndex, lastWhitespaceIndex) + '\n';
+        i = lastWhitespaceIndex + 1; // skip over the whitespace character
+      }
+    } else {
+      // If the current character is a space or the previous character is a space, insert the newline after the current index
+      responseWithNewlines += freeformResponse.substring(lastNewlineIndex, i) + '\n';
+    }
+    lastNewlineIndex = i;
+  }
+  responseWithNewlines += freeformResponse.substring(lastNewlineIndex);
+
   // Update person's selected option or add new person's selection
-  submissions[personId] = freeformResponse;
+  submissions[personId] = responseWithNewlines;
 
   // Write updated submission to file
   fs.writeFileSync(submissionPath, JSON.stringify(submissions));
