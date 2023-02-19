@@ -17,13 +17,13 @@ Here is a list of available commands high-five-bot will handle!
 
 Table of Contents:
 
-[highfive](https://github.com/gabrielramp/high-five-bot/blob/main/README.md#highfive)
+[highfive](https://github.com/gabrielramp/high-five-bot#highfive)
 
-[birthdaycard](https://github.com/gabrielramp/high-five-bot/blob/main/README.md#birthdaycard)
+[birthdaycard](https://github.com/gabrielramp/high-five-bot#birthdaycard)
 
-[poll](https://github.com/gabrielramp/high-five-bot/blob/main/README.md#poll)
+[poll](https://github.com/gabrielramp/high-five-bot#poll)
 
-[freeform](https://github.com/gabrielramp/high-five-bot/blob/main/README.md#freeform)
+[freeform](https://github.com/gabrielramp/high-five-bot#freeform)
 
 ### highfive
 
