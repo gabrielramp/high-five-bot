@@ -51,7 +51,7 @@ Evokes the bot to post an adaptive card with text inputs for creating a new poll
 
 This command can handle an infinite number of poll answers, separated in the text box by ';' semicolons.
 
-![poll1](https://user-images.githubusercontent.com/86631042/219921639-115e701a-29d0-4584-9c60-cba8c648fc1a.png)
+![image](https://user-images.githubusercontent.com/86631042/219976092-4e277b40-9350-44ad-a6f0-97c1ffa57786.png)
 
 Once submitted, the message is deleted and replaced with the created poll:
 
