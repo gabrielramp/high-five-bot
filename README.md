@@ -69,9 +69,9 @@ Clicking "View Current Results" will message the user with the current results:
 
 Syntax: ``freeform``
 
-Much like ``poll``, evoking ``freeform`` will yield a reply from the bot for a question to post. ``freeform`` is meant for feedback-style questions, wherein users of the Space are encouraged to type out submissions with a limit of 500 characters. Only the user that evoked the bot can submit this card.
+Much like ``poll``, evoking ``freeform`` will yield a reply from the bot for a question to post. ``freeform`` is meant for feedback-style questions, wherein users of the Space are encouraged to type out submissions with a limit of 500 characters. Only the user that evoked the bot can submit this card. The "Anonymous submissions" checkbox toggles whether the results of the question will display the respective submitter's names with their responses.
 
-![image](https://user-images.githubusercontent.com/86631042/219922328-1007a209-daf0-45ea-a105-d4b7105bf13f.png)
+![image](https://user-images.githubusercontent.com/86631042/219971666-b28ce430-719e-49fd-bbf6-c48d0bed1327.png)
 
 Once submitting a question, the message is deleted and replaced with a freeform text box for responses:
 
