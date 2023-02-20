@@ -17,6 +17,8 @@ Here is a list of available commands high-five-bot will handle!
 
 Table of Contents:
 
+[getallemails](https://github.com/gabrielramp/high-five-bot#getallemails)
+
 [highfive](https://github.com/gabrielramp/high-five-bot#highfive)
 
 [birthdaycard](https://github.com/gabrielramp/high-five-bot#birthdaycard)
@@ -24,6 +26,14 @@ Table of Contents:
 [poll](https://github.com/gabrielramp/high-five-bot#poll)
 
 [freeform](https://github.com/gabrielramp/high-five-bot#freeform)
+
+[gas](https://github.com/gabrielramp/high-five-bot#gas)
+
+### getallemails
+
+Syntax: ``getallemails``
+
+Retrieves all emails in the space that the command is sent and sends the list to the invoker.
 
 ### highfive
 
@@ -85,3 +95,34 @@ Clicking "View Current Responses" will message the user with all recorded respon
 
 ![image](https://user-images.githubusercontent.com/86631042/219923013-4ab506f9-7ba1-44bd-9fe2-78afe6eeee90.png)
 
+### gas
+
+Syntax: ``gas`` Only works as a direct message to Highfive.
+
+Gas someone up! Invoking ``gas`` will yield a card to send a recipient an anonymous commendation to which they can reply to once if they wish! This feature is meant to encourage your team to lift each other up!
+
+![image](https://user-images.githubusercontent.com/86631042/220245464-963854ef-5fdc-4945-a4e5-b7067f5af798.png)
+
+After sending your positive message:
+
+![image](https://user-images.githubusercontent.com/86631042/220245730-a051bffe-8021-4183-a315-76ded2b011f6.png)
+
+What the recipient sees:
+
+![image](https://user-images.githubusercontent.com/86631042/220245816-c4360812-b620-4686-bd4f-0cd81261655f.png)
+
+Replying to gas:
+
+![image](https://user-images.githubusercontent.com/86631042/220245865-4fc73340-9137-477f-bd47-1f5239e250fd.png)
+
+Receiving a reply to your gas:
+
+![image](https://user-images.githubusercontent.com/86631042/220245991-70545ab2-13cf-405d-bdf8-8dd0edc8d858.png)
+
+After sending a reply:
+
+![image](https://user-images.githubusercontent.com/86631042/220246037-d7edefe5-e5db-4903-832b-4db57b43863e.png)
+
+## Credits
+
+### Special thanks to Brad, Julianna, and Max for breaking the bot on purpose, and to Victor Algaze for encouraging me :)

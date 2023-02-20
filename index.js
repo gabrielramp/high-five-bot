@@ -6,11 +6,10 @@ var webhook = require("webex-node-bot-framework/webhook");
 var express = require("express");
 var bodyParser = require("body-parser");
 var app = express();
+const fs = require('fs');
+const crypto = require('crypto');
 app.use(bodyParser.json());
 app.use(express.static("images"));
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto');
 
 ///
 /// IMPORTANT INFORMATION:
@@ -18,7 +17,7 @@ const crypto = require('crypto');
 /// including HTTP requests, API interaction, even JavaScript and Node.js! (I usually code in C and Python.)
 /// So, if you see any code that could be expressed more efficiently or concisely, please submit a PR!
 /// Thank you, Gabe
-///
+/// 
 
 // Configuration
 const config = {
@@ -42,28 +41,6 @@ framework.on("Initialized, coming online...", () => {
   console.log("Bot is good to go! [Press CTRL-C to quit]");
 });
 
-// Perform upon joining a space
-framework.on("spawn", (bot, id, actorId) => {
-  if (!actorId) {
-    // DONT SAY ANYTHING HERE OR WE SPAM EVERY SPACE EVERY RESTART
-  } else {
-    // actorId present means we've been added to a new space.
-    // When added to new space:
-    var msg = "*@mention* me and use the command 'help' to see my commands.";
-    bot.webex.people
-      .get(actorId)
-      .then((user) => {
-        msg = `Hi! ${msg}`;
-      })
-      .catch((e) => {
-        console.error(
-          `${e.message}`
-        );
-      msg = `Hello there! ${msg}`;
-    });
-  }
-});
-
 // debug command 'devcls'
 // Prints empty space into the chat for the purpose of allowing demonstrations without distractions in the chat history
 framework.hears (
@@ -75,52 +52,67 @@ framework.hears (
 )
 
 // 'about' command
+// Displays normal information about the bot
 framework.hears(
   "about",
   (bot, trigger) => {
-    bot.say("made by Gabe with <3");
+    bot.say(`made by Gabe with <3
+            \nhttps://www.youtube.com/watch?v=9JnGuLUvE4A
+            \nSpecial Thanks to Brad, Max, and Julianna for testing the bot!`);
   },
   "**about**: Show information about this bot",
   0
 );
 
+// 'getallemails' command
+// Returns all emails in the space as a DM to the invoker
+framework.hears(
+  "getallemails",
+  (bot, trigger) => {
+    bot.webex.memberships.list({ roomId: bot.room.id })
+    .then(async (memberships) => {
+      let allemails = [];
+        for (const member of memberships.items) {
+          allemails.push(member.personEmail)
+        }
+      let allemailsstring = allemails.join('\n');
+      console.log(`${allemailsstring} to ${trigger.person.email}`);
+      bot.dm(trigger.personId, {"markdown": 'Here are your emails from Space ' + bot.room.title + ':\n' + allemailsstring});
+    });
+  },
+  "**getallemails**: Retrieve the emails of every person in the Space.",
+  0
+);
+
+// 'hi highfive' command
+// Just a high five command. Useful for demonstrations.
+framework.hears (
+  "Hi Highfive!",
+  async (bot, trigger) => {
+    bot.say("markdown", `Hey ${trigger.person.firstName}!`);
+  },
+  0
+)
+
 // 'help' command
+// Invokes framework.showHelp()
 framework.hears (
   "help",
   async (bot, trigger) => {
-    bot.say("markdown", framework.showHelp());
+    bot.say("markdown", framework.showHelp("Available Commands: ", "Any feedback or feature requests? Message gaberami@cisco.com. I don't bite!"));
   },
   "**help**: Show available bot commands.",
   0
 )
 
-// Catch-all for unrecognized commands with asterisk as syntax and priority of 99999
-framework.hears (
-  /.*/,
-  async (bot, trigger) => {
-    console.log(`Catch-all handler: ${trigger.text}`);
-    bot.say(`Sorry, I not sure how to respond to "${trigger.text}".`)
-      .then(() => bot.say("markdown", framework.showHelp()))
-      .catch((e) =>
-        console.error(`Problem in the unexpected command handler: ${e.message}`)
-      );
-  },
-  99998 // Priority
-);
-
+// 'highfivecard' command: Create a High Five card for a user, specified by email
 // Pull the High Five JSON Card Template
 const highfivecard = require('./templates/highfivecard.json');
-
-// 'highfive' command: Create a High Five card for a user, specified by email
 framework.hears(
-  "highfive",
+  "highfivecard",
   (bot, trigger) => {
 
-    //
-    // Trigger start
-    //
-
-    // logging for debug weeeee
+    // Logging for debug weeeee
     console.log
     ("\n\nHigh Five Received:",
     "\nMessage:", trigger.message.text,
@@ -184,32 +176,25 @@ framework.hears(
       console.log("Exited card loop.");
     });
   },
-  "**highfive**: Syntax: [@mention highfive [*recipient-email1*]] (support multiple emails). Creates a High Five card for a user!",
+  "**highfivecard**: Syntax: [@mention highfive [*recipient-email1*]] (support multiple emails). Creates a High Five card for a user!",
   0 // Command Priority
 );
 
-// Birthday Card JSON Template
-const birthdaycard = require('./templates/birthdaycard.json');
-
 // 'birthdaycard' command: Create a birthday card for someone! Specified by email.
-//
-// This command is almost a copy-paste of the highfive command, with the addition of an HTTP request to the Webex API to return a user's details which contains their Webex profile picture URL (among other things but we won't talk about that).
-//
+// This command is almost a copy-paste of the highfive command, with the addition of an HTTP request to the Webex API to return a user's details which contains their Webex profile picture URL.
+const birthdaycard = require('./templates/birthdaycard.json');
 framework.hears(
   "birthdaycard",
   (bot, trigger) => {
 
-    // Log received
-    console.log("\n\nStarting a birthday card interaction.");
-    console.log("Happy Birthday!! You get a special card...");
-
-    // The rest of this is the same as the 'highfive' function. Look up there to see how this works!
+    // The rest of this is the same as the 'highfive' function except the HTTP GET. Look up there to see how this works!
     bot.webex.memberships.list({ roomId: bot.room.id })
     .then(async (memberships) => {
       for (let i = 1; i < trigger.args.length; i++) {
         for (const member of memberships.items) {
           if (member.personEmail == trigger.args[i]) {
 
+            // Getting the name of email without the domain
             cleanedname = member.personEmail.split('@')[0];
 
             // Here's where it's different. We're using the Axios library to make an HTTP request to the Webex API for a person's details.
@@ -220,7 +205,7 @@ framework.hears(
               .then(response => {
 
                 // Here we find and put a person's data in these variables. The return is predictable as per the API documentation.
-                console.log("Axios HTTP Request:");
+                //console.log(`Axios HTTP Request: ${JSON.stringify(response.data, null, 2)}`);
                 console.log("Avatar URL:", response.data.avatar);
                 var firstname = response.data.firstName;
                 var avatarurl = response.data.avatar;
@@ -259,10 +244,12 @@ framework.hears(
 )
 
 // Poll command
+// Creates a newPollCard and sends it in the chat for the user.
 framework.hears (
   "poll",
   (bot,trigger) => {
     async function Poll() {
+
       // Create new ID for this poll
       const newPollId = generaterandomString();
 
@@ -327,13 +314,13 @@ framework.hears (
     // Call this function.
     Poll();
   },
-  "**poll**: Create a poll! Command inspired by Pollbot, but they're not open-source, though!",
+  "**poll**: Create a poll! Command inspired by Pollbot--they're not open-source, though!",
   0
 )
 
 // Freeform command
+// Creates a freeformCreateCard and sends it in the chat.
 framework.hears (
-  // Triggered by mentioning the bot with command 'freeform'
   "freeform",
   (bot, trigger) => {
     async function Freeform() {
@@ -398,29 +385,133 @@ framework.hears (
   0
 )
 
-// attachmentAction handling
+// Gas command
+// Creates a newGas card and sends it in the chat (only works in a DM).
+framework.hears (
+  "gas",
+  (bot,trigger) => {
+    
+    // gas function
+    async function newGas() {
+      // Create new ID for this interaction
+      const newGasId = generaterandomString();
+
+      // Create the gas card
+      let newGasCard =
+        {
+          "type": "AdaptiveCard",
+          "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+          "version": "1.3",
+          "body": [
+              {
+                "type": "TextBlock",
+                "text": "Gas someone up! 🔥",
+                "wrap": true,
+                "size": "Large",
+                "weight": "Bolder",
+              },
+              {
+                "type": "Input.Text",
+                "label": "Enter your recipient's email here:",
+                "placeholder": "example@cisco.com",
+                "spacing": "Medium",
+                "isRequired": true,
+                "id": "gasRecipient",
+              },
+              {
+                "type": "Input.Text",
+                "label": "Enter your message here:",
+                "placeholder": "You delivered your presentation really well!",
+                "spacing": "Medium",
+                "isRequired": true,
+                "id": "gasMessage",
+              },
+              {
+                "type": "TextBlock",
+                "text": "Your message will be anonymous.\nThe recipient will be able to reply to your message.",
+                "spacing": "Medium",
+                "size": "Small"
+              }
+          ],
+          actions: [
+            {
+              spacing: "Large",
+              type: "Action.Submit",
+              title: "Gas them up 🔥",
+              data: {
+                "formType": "newGasMessage",
+                "formId": `${newGasId}`,
+                "endpoint": `${process.env.WEBHOOKURL}/submit`,
+                "trigger": trigger
+              }
+            }
+          ]
+        }
+
+        // Send the card in the chat.
+        bot.sendCard (
+          newGasCard,
+          "newGasCard"
+        );
+    }
+
+    // First we check if we're in DMs by counting the amount of users in the room.
+    // Unfortunately, there's not a way to discern a Space from a Room without doing this that I know of.
+    var gasFlag = 0;
+    bot.webex.memberships.list({ roomId: bot.room.id })
+    .then(async (memberships) => {
+      let memberCounter = 0;
+      // Count the amount of people that are currently in the Space
+      for (const member of memberships.items) {
+
+        // Once the counter gets to 3, bail and send fallback message
+        if (memberCounter >= 3) 
+        {
+          bot.say("If you want to use the 'gas' command, please DM me the word 'gas'!");
+          gasFlag = 1;
+          return;
+        } else {
+          memberCounter++;
+          continue;
+        }
+
+      }
+
+        // New gas if only 2 members, return if greater than 2
+        if (!gasFlag) {
+          newGas(); 
+        }
+        else
+          return;
+    });
+
+  },
+  "**gas**: Compliment someone anonymously! Only works in direct messages with this bot.",
+  0
+)
+
+//
+// attachmentAction Handling
 //
 // Here's our main function where we listen to submission events for polls, freeform submissions, and anything else.
 // When a user interacts with an adaptive card sent by the bot, that interaction is handled here.
-framework.on('attachmentAction', async (bot, trigger) => {
-  // The entirety of the interaction's attached data is within trigger.attachmentAction, so we'll make these variables easy to call here.
 
+framework.on('attachmentAction', async (bot, trigger) => {
   // attachedForm will contain all of the message data, i.e message id, personId, roomId, creation time.
   const attachedForm = trigger.attachmentAction; 
 
   // formData will contain all information passed through with the submission action of the interacted Adaptive Card, so hopefully i.e formType, formTitle, formId.
   const formData = trigger.attachmentAction.inputs;
 
-  // And here's some debug information that's hopefully commented out (because there's no current problems!)
-  //console.log(`Test Parse: \nType: ${trigger.attachmentAction.type}`);
+  // Log the submission data
   console.log(`\n\n\nReceived Attachment:\n${JSON.stringify(trigger.attachmentAction, null, 2)}`);
 
-  // Handle POLL SUBMISSIONS (pollRes)
+  // Handle POLL SUBMISSIONS (pollResponse)
   // Submitted when a user selects an option in a poll and clicks 'Submit'
   if (formData.formType == "pollResponse") {
-    // Log the submission
     console.log("Handling 'pollResponse': Poll Selection Submission");
-    //bot.say(`${attachedForm.id}, you selected ${selectedOption}! (this is a debug message)`);
+
+    // Submit the response to have it saved
     submitPollResponse(formData.formId, attachedForm.personId, formData.polloption);
   }
 
@@ -437,23 +528,36 @@ framework.on('attachmentAction', async (bot, trigger) => {
     // isAnonymous will determine whether the results will be printed with the names of every person who chose that result under them.
     const isAnonymous = formData.isAnonymous;
 
-    // Some logging
     console.log(`Poll status request made for poll ${pollId}.`);
     console.log("\nResults: ");
 
     // Then we call our handy getPollResults() which will handle gathering all of the data.
     try {
+      // Retrieve the poll results from the JSON.
       const results = await getPollResults(pollId, isAnonymous);
 
-      // Here we're going to create our template card for displaying the results of a poll,
-      // Starting with dynamicResults, which will be a chunk of Adaptive Card syntax that will contain the options of the poll along with their counts and selectors.
+      // allOptions is a Set which contains all of the titles of each choice. We remove these titles to use the remaining ones.
+      const allOptions = new Set(choiceTitles);
+
+      // dynamicResults will contain the Microsoft Adaptive Card format of all the information we retrieved.
       let dynamicResults = [];
+
+      // Now we're going to loop for each option present in the results (options that have not been 'voted for' are not in this object array.).
       results.forEach((option) => {
+        // How many voted for this option
         const count = option.score;
+
+        // Title of the option
         const selectedOptionTitle = option.selectedOption;
+
+        // List of names who voted for this option
         const selectorNames = option.selectors;
+
+        // debug
         console.log(`${selectedOptionTitle}: ${count}`);
         console.log(`Selectors: ${selectorNames.join(', ')}`);
+
+        // Create a single 'block' of text for this 
         let singleresult =
           {
             type: "TextBlock",
@@ -462,25 +566,47 @@ framework.on('attachmentAction', async (bot, trigger) => {
             spacing: "Small",
             size: "Medium",
           };
-        // If the poll is not anonymous, add a text block below the selectedOptionTitle for displaying the selectors.
-        if (isAnonymous == "false") {
-          const selectorText = selectorNames.join(',');
-          const selectorBlock =
-            {
-              type: "TextBlock",
-              text: selectorText,
-              weight: "Lighter",
-              spacing: "Small",
-              size: "Small",
-              wrap: true,
-            };
+        
+        // If the 'isAnonymous' flag is set to false, add a text box to display the names of the selectors
+        if (isAnonymous == false) {
+          // Bring all names into one string separated by comma
+          let selectorText = selectorNames.join(', ');
+
+          // Textblock of selectors
+          const selectorBlock = 
+          {
+            type: "TextBlock",
+            text: `${selectorText}`,
+            wrap: true,
+            spacing: "Small",
+            size: "Small",
+          };
+
+          // Push singleresult and selectorBlock
           dynamicResults.push(singleresult, selectorBlock);
-        } 
+        }
+        // If not anonymous, just push results
         else {
           dynamicResults.push(singleresult);
         }
+
+        // Remove the selected option from the list of all options, so that we can find the remaining options
+        allOptions.delete(selectedOptionTitle);
       });
 
+      // Loop through the remaining options and add them to the dynamicResults array, with a count of 0
+      allOptions.forEach(option => {
+        let singleresult =
+          {
+            type: "TextBlock",
+            text: `${option}: 0`,
+            weight: "Bolder",
+            spacing: "Small",
+            size: "Medium",
+          };
+        
+        dynamicResults.push(singleresult);
+      });
 
       // Followed by our actual Adaptive Card template.
       let pollresults =
@@ -523,6 +649,7 @@ framework.on('attachmentAction', async (bot, trigger) => {
         // Error message if applicable.
         "pollresults"
       )
+      bot.censor(attachedForm.messageId);
     } catch(error) {
       console.log (`There was an error reading the poll results for poll ID ${pollId}.\n` + error);
     }
@@ -543,7 +670,7 @@ framework.on('attachmentAction', async (bot, trigger) => {
       let anonFollowupText = "";
       var anonFlag = 1;
 
-      if (formData.isAnonymous == "true") {
+      if (formData.isAnonymous == true) {
         console.log(`if-else isAnonymous: read TRUE`);
         anonText = `This response will be anonymous.`;
         anonFollowupText = `Submissions to your question will be anonymous.`;
@@ -652,7 +779,7 @@ framework.on('attachmentAction', async (bot, trigger) => {
           "Freeform Question Followup");
     }
     else {
-      // TODO: Put logic here that happens when someone tries to type to the createFreeform who didn't evoke the bot. (DM user to say this isnt theirs and they can make their own)
+      bot.dm(attachedForm.personId, "Sorry! This freeform Create card is reserved. If you'd like to start your own freeform response question, use the command 'freeform'.")
     }
 
   }
@@ -731,13 +858,13 @@ framework.on('attachmentAction', async (bot, trigger) => {
   // Handle pollCreate
   // Submitted when a user uses @mention poll2 and submits a question and answer for posting.
   if (formData.formType == "pollCreate") {
-    console.log(`DEBUG: Received freeformCreate type.\n Trigger data:` + formData.trigger.text);
+    console.log(`DEBUG: Received pollCreate type.\n Trigger data:` + formData.trigger.text);
 
     let anonFlag = 1;
     let anonText = "";
     let anonFollowupText = "";
     // isAnonymous flag handling
-    if (formData.isAnonymous == "true") {
+    if (formData.isAnonymous == true) {
       anonText = `Your choice will be anonymous.`;
       anonFollowupText = `Submissions to your poll will be anonymous.`;
     }
@@ -752,8 +879,18 @@ framework.on('attachmentAction', async (bot, trigger) => {
       // Parse the answerBox and questionBox fields of the submission
       let pollQuestionTitle = formData.questionBox;
 
-      // Here we do a lot with a little to simultaneously split the string by the semicolons, while also removing whitespace that isn't between any words.
-      let pollAnswers = formData.answersBox.split(';').map(word => word.trim()); 
+      // Here we do a lot with a little to simultaneously split the string by the semicolons, while also doing sanitization.
+
+      let cleanedAnswersBox = formData.answersBox.replace(/\\/g, '');
+      cleanedAnswersBox = cleanedAnswersBox.replace(/;;+/g, ';');
+      if (cleanedAnswersBox.slice(-1) === ';') {
+        cleanedAnswersBox = cleanedAnswersBox.slice(0, -1);
+      }
+      if (cleanedAnswersBox.charAt(0) === ';') {
+        cleanedAnswersBox = cleanedAnswersBox.slice(1);
+      }
+
+      let pollAnswers = cleanedAnswersBox.split(';').map(word => word.trim()); 
 
       // Then we'll create the dynamic text for the choices, along with saving the titles for our results card.
       let choiceTitles = [];
@@ -872,10 +1009,340 @@ framework.on('attachmentAction', async (bot, trigger) => {
 
     }
     else {
-      // TODO: Put logic here that happens when someone tries to type to the pollCreate who didn't evoke the bot. (DM user to say this isnt theirs and they can make their own)
+      bot.dm(attachedForm.personId, "Sorry! This poll create card is reserved. If you'd like to start your own freeform response question, use the command 'poll'.")
     } 
   }
+
+  // Handle a gas create
+  // Submitted when a user clicks 'send' on a Gas creation form
+  if (formData.formType == "newGasMessage") {
+    console.log(`DEBUG: Handling new gas message from ${formData.trigger.person.userName} to "${formData.gasRecipient}"`);
+    // Gas ID
+    const gasId = formData.formId;
+
+    // Email of the sender
+    const gasSender = formData.trigger.person.userName;
+
+    // Email of the recipient
+    const gasReceiver = formData.gasRecipient;
+
+    // Initial Gas message
+    const gasMessage = formData.gasMessage;
+
+    // Delete the gas creation card
+    bot.censor(attachedForm.messageId);
+
+    let youGotGasCard = 
+    {
+      type: "AdaptiveCard",
+      $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+      version: "1.2",
+      body: [
+          {
+              type: "TextBlock",
+              text: "You've got Gas! 🔥",
+              wrap: true,
+              size: "Large",
+              weight: "Bolder"
+          },
+          {
+              type: "TextBlock",
+              text: "Someone has decided to anonymously gas you up!\nHere's what they said.",
+              wrap: true,
+              size: "Small",
+              spacing: "Small"
+          },
+          {
+              type: "Container",
+              items: [
+                  {
+                      "type": "TextBlock",
+                      "text": `${gasMessage}`,
+                      "wrap": true,
+                      "size": "Medium",
+                      "spacing": "None"
+                  }
+              ],
+              spacing: "Medium"
+          },
+          {
+            type: "TextBlock",
+            text: "You can click this button to reply to this person.",
+            wrap: true,
+            size: "Small",
+            spacing: "Medium"
+          },
+      ],
+      actions: [
+        {
+          type: "Action.Submit",
+          title: "Reply to this gas",
+          data: {
+            "originalTriggerPerson": `${formData.trigger.person.userName}`,
+            "originalGas": `${gasMessage}`,
+            "formType": "gasReplyRequest",
+            "formId": `${formData.formId}`,
+            "endpoint": `${process.env.WEBHOOKURL}/submit`
+          }
+        }
+      ]
+    };
+
+    // if the recipient is the bot
+    if (formData.gasRecipient.toLowerCase() == "cxhighfivebot@webex.bot") {
+      bot.say ("Thanks for the gas!");
+      return;
+    }
+
+    // Try to send the message to the reciever.
+    try {
+      await bot.dmCard(formData.gasRecipient, youGotGasCard, "You got Gas!");
+    } catch(error) {
+      // If there's an error sending the card to the recipient, then let the sender know.
+      bot.say(`Hmm. There was an error sending your gas.\nPlease ensure you typed in the right email address and try again. Here was your message: \n\nTo ${formData.gasRecipient}:\n${gasMessage}`);
+      return;
+    }
+
+    let gasSentConfirmationCard = 
+    {
+      type: "AdaptiveCard",
+      $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+      version: "1.2",
+      body: [
+          {
+              type: "TextBlock",
+              text: "Gas sent!🔥",
+              wrap: true,
+              size: "Large",
+              weight: "Bolder"
+          },
+          {
+              type: "TextBlock",
+              text: "Your gas recipient has successfully received their gas. If they reply, you'll receive a message letting you know.",
+              wrap: true,
+              size: "Medium"
+          },
+          {
+            type: "TextBlock",
+            text: "Here's what you sent:",
+            wrap: true,
+            size: "Small"
+          },
+          {
+            type: "Container",
+            items: [
+                {
+                    "type": "TextBlock",
+                    "text": `${gasMessage}`,
+                    "wrap": true,
+                    "size": "Small",
+                    "spacing": "None"
+                }
+            ],
+            spacing: "Small"
+          },
+      ],
+    }
+
+    // Send confirmation card
+    bot.sendCard(gasSentConfirmationCard, "Gas sent.");
+  }
+
+  // Handle gas reply REQUEST
+  // Submitted when a user clicks "Reply" after receiving a gas.
+  if (formData.formType == "gasReplyRequest") {
+    // Original gas message
+    const originalGas = formData.originalGas;
+
+    // Original sender
+    const originalTriggerPerson = formData.originalTriggerPerson;
+
+    bot.censor(attachedForm.messageId);
+
+    let gasReplyRequestCard =
+        {
+          "type": "AdaptiveCard",
+          "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+          "version": "1.3",
+          "body": [
+              {
+                "type": "TextBlock",
+                "text": "Reply to your Gas! 🔥",
+                "wrap": true,
+                "size": "Large",
+                "weight": "Bolder",
+              },
+              {
+                "type": "TextBlock",
+                "text": "The original gas:",
+                "spacing": "Medium",
+                "size": "Small"
+              },
+              {
+                type: "Container",
+                items: [
+                    {
+                        "type": "TextBlock",
+                        "text": `${originalGas}`,
+                        "wrap": true,
+                        "size": "Small",
+                        "spacing": "Small"
+                    }
+                ],
+                spacing: "Small"
+              },
+              {
+                "type": "Input.Text",
+                "label": "Enter your reply here:",
+                "placeholder": "Thank you, stranger!",
+                "spacing": "Medium",
+                "isRequired": true,
+                "id": "gasReplyMessage",
+              }
+          ],
+          actions: [
+            {
+              spacing: "Large",
+              type: "Action.Submit",
+              title: "Reply 🔥",
+              data: {
+                "originalGas": `${originalGas}`,
+                "originalTriggerPerson": originalTriggerPerson,
+                "formType": "gasReply",
+                "endpoint": `${process.env.WEBHOOKURL}/submit`,
+              }
+            }
+          ]
+        }
+
+    bot.sendCard(gasReplyRequestCard, "Reply to your gas!");
+  }
+
+  // Handle gasReply
+  // Submitted when a user clicks 'send' on a reply to a gas.
+  if (formData.formType == "gasReply") {
+    // Original gas message
+    const originalGas = formData.originalGas;
+
+    // Original sender
+    const originalTriggerPerson = formData.originalTriggerPerson;
+
+    const gasReply = formData.gasReplyMessage;
+
+    // get name
+    const replyName = await getFirstName(attachedForm.personId);
+
+    console.log(`DEBUG: getting reply name after call then: ${replyName}`);
+
+    bot.censor(attachedForm.messageId);
+
+    let gasReplyCard =
+        {
+          "type": "AdaptiveCard",
+          "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+          "version": "1.3",
+          "body": [
+              {
+                "type": "TextBlock",
+                "text": "You've received a reply to your gas! 🔥",
+                "wrap": true,
+                "size": "Large",
+                "weight": "Bolder",
+                "spacing": "Small",
+              },
+              {
+                "type": "TextBlock",
+                "text": `Here's what ${replyName} said:`,
+                "wrap": true,
+                "size": "Medium",
+                "spacing": "Medium"
+              },
+              {
+                type: "Container",
+                items: [
+                    {
+                        "type": "TextBlock",
+                        "text": `${gasReply}`,
+                        "wrap": true,
+                        "size": "Medium",
+                        "spacing": "None",
+                    }
+                ]
+              },
+              {
+                "type": "TextBlock",
+                "text": "The original gas:",
+                "spacing": "Medium",
+                "size": "Small"
+              },
+              {
+                type: "Container",
+                items: [
+                    {
+                        "type": "TextBlock",
+                        "text": `${originalGas}`,
+                        "wrap": true,
+                        "size": "Small",
+                        "spacing": "None"
+                    }
+                ],
+                spacing: "Small"
+              }
+          ]
+        }
+    bot.dmCard(originalTriggerPerson, gasReplyCard, "Your gas received a reply!");
+
+    let gasReplyConfirmationCard = 
+    {
+      type: "AdaptiveCard",
+      $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+      version: "1.2",
+      body: [
+          {
+              type: "TextBlock",
+              text: "Gas reply sent!🔥",
+              wrap: true,
+              size: "Large",
+              weight: "Bolder"
+          },
+          {
+            type: "TextBlock",
+            text: `Here's the original gas:`,
+            wrap: true,
+            size: "Small"
+          },
+          {
+            type: "Container",
+            items: [
+                {
+                    "type": "TextBlock",
+                    "text": `${originalGas}`,
+                    "wrap": true,
+                    "size": "Small",
+                    "spacing": "Small"
+                }
+            ],
+            spacing: "Small"
+          },
+      ],
+    }
+    bot.sendCard(gasReplyConfirmationCard, "Gas Reply Confirmation");
+  }
 });
+
+// This function will get a person's first name by first calling getPersonDetails.
+async function getFirstName(personId) {
+  // Try to retrieve person's details
+  try {
+    const personData = await getPersonDetails(personId);
+    const replyName = personData.firstName;
+    // Return the person's first name.
+    return replyName;
+  } catch (error) {
+    console.log(`DEBUG getFreeformResponses: Error retrieving person details for personId: ${personId}`);
+    console.log(error);
+  }
+}
 
 // buildTextFreeformResponsesAnonymous takes a string array of freeform responses (without a personId) and returns the text block which displays these responses in an Adaptive Card.
 function buildTextFreeformResponsesAnonymous (freeformResponses) {
@@ -893,14 +1360,19 @@ function buildTextFreeformResponsesAnonymous (freeformResponses) {
   return freeformResponsesCardText;
 }
 
+// This function will find all of the data points in a specific JSON specified by its pollId, and fetch all of the choices made by each user.
 async function getPollResults(pollId, isAnonymous) {
+
+  // Find the file
   const filePath = `./submissions/${pollId}.json`;
 
   try {
+    // Read the contents of  the JSON and parse it into JavaScript object
     const fileContents = fs.readFileSync(filePath, 'utf-8');
     const pollData = JSON.parse(fileContents);
     const results = [];
 
+    // Create object to store selectors by option, with each option storing a score count and a string array of the peopleIds that selected it
     const selectorsByOption = {};
     for (const [personId, selectedOption] of Object.entries(pollData)) {
       if (!selectorsByOption[selectedOption]) {
@@ -913,6 +1385,7 @@ async function getPollResults(pollId, isAnonymous) {
       selectorsByOption[selectedOption].score++;
     }
 
+    // Then, for each option, resolve personId to their name and create object for result.
     for (const [selectedOption, selectors] of Object.entries(selectorsByOption)) {
       const selectorNames = await Promise.all(selectors.selectors.map(async (personId) => {
         const personDetails = await getPersonDetails(personId);
@@ -932,35 +1405,6 @@ async function getPollResults(pollId, isAnonymous) {
     throw error;
   }
 }
-
-
-// This function will find all of the data points in a specific JSON specified by its pollId, and fetch all of the choices made by each user.
-/*function getPollResults(pollId, isAnonymous) {
-  // Assuming the JSON files are stored in a directory called 'polls'
-  const filePath = `./submissions/${pollId}.json`;
-
-  try {
-    // Read the contents of the JSON file
-    const fileContents = fs.readFileSync(filePath, 'utf-8');
-
-    // Parse the contents of the file into a JavaScript object
-    const pollData = JSON.parse(fileContents);
-
-    // Create an object to store the results
-    const results = {};
-
-    // Loop through each person's poll selection and add it to the results object
-    Object.keys(pollData).forEach((personId) => {
-      const selectedOption = pollData[personId];
-      results[personId] = selectedOption;
-    });
-
-    return results;
-  } catch (error) {
-    throw error;
-    return null;
-  }
-}*/
 
 // This logic here is where we take items from a poll response and organize the data.
 // From a poll submission, that poll's ID, that person's ID, and their selected option is taken and put into a JSON.
@@ -1100,6 +1544,7 @@ async function getPersonDetails(personId) {
   try {
     // Make a request to the Webex API and return the response
     const response = await axios.get(`https://webexapis.com/v1/people/${personId}?callingData=true`, httpauth);
+    console.log(`Response: ${response.data}`);
     return response.data;
   } catch (error) {
     console.log(`Error retrieving person details for personId: ${personId}` + error);
@@ -1112,6 +1557,20 @@ async function getPersonDetails(personId) {
 /// Down here is where I keep all of my small cogs that keep the machine working. All of these are critical!
 ///
 ///
+
+// Catch-all for unrecognized commands
+framework.hears (
+  /.*/,
+  async (bot, trigger) => {
+    console.log(`Catch-all handler: ${trigger.text}`);
+    bot.say(`Sorry, I not sure how to respond to "${trigger.text}".`)
+      .then(() => bot.say("markdown", framework.showHelp("Available Commands: ", "Any feedback or feature requests? Message gaberami@cisco.com. I don't bite!")))
+      .catch(e =>
+        console.error(`Problem in the unexpected command handler: ${e.message}`)
+      );
+  },
+  99998 // Priority
+);
 
 // API Setup Start
 // We set up our webhook on the Webex API to be able to send and receive data like submissions from a poll.
@@ -1143,10 +1602,11 @@ framework.on("log", (msg) => {
   console.log(msg);
 });
 
+/*
 // Health Check
 app.get("/", (req, res) => {
   res.send(`I'm alive.`);
-});
+}); */
 
 // Here's where our webhook is listening for requests and data.
 app.post("/", webhook(framework));
