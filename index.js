@@ -78,7 +78,77 @@ framework.on("Initialized, coming online...", () => {
 * | (_| (_) | | | | | | | | | | | (_| | | | | (_| \__ \
 *  \___\___/|_| |_| |_|_| |_| |_|\__,_|_| |_|\__,_|___/
 *
-*/                                                     
+*/                     
+
+let dummycard = 
+{
+  type: "AdaptiveCard",
+  $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+  version: "1.0",
+  body: [
+    {
+      type: "TextBlock",
+      text: `From **Gabe**:\n Sample Poll`,
+      wrap: "true",
+      size: "Medium",
+      weight: "Default",
+    },
+    {
+      type: "Input.ChoiceSet",
+      choices: [
+        {
+            title: "Option 1",
+            value: "Option 1"
+        },
+        {
+            title: "Option 2",
+            value: "Option 2"
+        },
+        {
+          title: "Other",
+          value: "Other"
+        }
+    ],
+      isMultiselect: "true",
+      style: "expanded",
+      id: "polloption",
+    },
+    {
+      type: "Input.Text",
+      placeholder: "Please specify",
+      spacing: "None"
+    },
+    {
+      type: "TextBlock",
+      text: `Your choices will be anonymous.`,
+      wrap: "true",
+      size: "Small",
+      weight: "Default",
+      spacing: "Medium",
+    },
+  ],
+  actions: [
+    {
+      type: "Action.Submit",
+      title: "Submit",
+      data: {
+        "formType": "pollResponse",
+        "formId": `test`,
+        "endpoint": `test`
+      }
+    }
+  ]
+};
+
+// 'help' command
+framework.hears (
+  "testcard",
+  (bot) => {
+    bot.sendCard(testcard, "test card");
+  },
+  0
+)
+                   
                      
 // 'help' command
 framework.hears (
@@ -133,7 +203,7 @@ framework.hears(
 );
 
 // 'hi highfive' command
-// Just a high five command. Useful for demonstrations.
+// Just a hello command. Useful for demonstrations.
 framework.hears (
   "Hi Highfive!",
   async (bot, trigger) => {
@@ -325,6 +395,18 @@ framework.hears (
                 "title": "Anonymous answers",
                 "id": "isAnonymous",
                 "value": "true"
+              },
+              {
+                "type": "Input.Toggle",
+                "title": "Enable Multi-select",
+                "id": "isMultiselect",
+                "value": "false"
+              },
+              {
+                "type": "Input.Toggle",
+                "title": "Create \"Other\" freeform option",
+                "id": "hasOther",
+                "value": "false"
               }
           ],
           actions: [
@@ -907,42 +989,49 @@ framework.on('attachmentAction', async (bot, trigger) => {
   // Handle pollCreate
   // Submitted when a user uses @mention poll2 and submits a question and answer for posting.
   if (formData.formType == "pollCreate") {
-    console.log(`DEBUG: Received pollCreate type.\n Trigger data:` + formData.trigger.text);
-
-    let anonFlag = 1;
-    let anonText = "";
-    let anonFollowupText = "";
-    // isAnonymous flag handling
-    if (formData.isAnonymous == true) {
-      anonText = `Your choice will be anonymous.`;
-      anonFollowupText = `Submissions to your poll will be anonymous.`;
-    }
-    else {
-      anonFlag = 0;
-      anonText = `The creator of this poll will see your selection.`;
-      anonFollowupText = `Submissions will not be anonymous.`;
-    }
-
     // First we'll check if the person that submitted the freeform question also triggered the bot to send it in the first place.
     if (attachedForm.personId == formData.trigger.person.id) {
+      console.log(`DEBUG: Received pollCreate type`);
+    
+      // isMultiselect means users can select multiple answers. This value goes right into the card.
+      const isMultiselect = formData.isMultiselect;
+      // hasOther means that the poll will have an 'other' option that has a freeform response in it. We make a new block for this.
+      const hasOther = formData.hasOther;
+  
+      let anonText = "";
+      let anonFollowupText = "";
+      // isAnonymous flag handling
+      if (formData.isAnonymous == true) {
+        anonText = `Your choice will be anonymous.`;
+        anonFollowupText = `Submissions to your poll will be anonymous.`;
+      }
+      else {
+        anonText = `The creator of this poll will see your selection.`;
+        anonFollowupText = `Submissions will not be anonymous.`;
+      }
+
       // Parse the answerBox and questionBox fields of the submission
       let pollQuestionTitle = formData.questionBox;
 
       // Here we do a lot with a little to simultaneously split the string by the semicolons, while also doing sanitization.
-
+      // First we remove any escape characters 
       let cleanedAnswersBox = formData.answersBox.replace(/\\/g, '');
+      // Then we remove any adjacent semicolons (i.e ";;;;;;" becomes ";")
       cleanedAnswersBox = cleanedAnswersBox.replace(/;;+/g, ';');
+      // Then if the first or last characters are semicolons, remove them
       if (cleanedAnswersBox.slice(-1) === ';') {
         cleanedAnswersBox = cleanedAnswersBox.slice(0, -1);
       }
       if (cleanedAnswersBox.charAt(0) === ';') {
         cleanedAnswersBox = cleanedAnswersBox.slice(1);
       }
-
+      // Then we remove unnecessary whitespace.
       let pollAnswers = cleanedAnswersBox.split(';').map(word => word.trim()); 
 
-      // Then we'll create the dynamic text for the choices, along with saving the titles for our results card.
+      // Now we'll create the dynamic text for the choices, along with saving the titles for our results card.
+      // choiceTitles will be an array of the names of the options in this poll for parsing later.
       let choiceTitles = [];
+      // choices will be the block of options within the card's "Input.ChoiceSet" option.
       let choices = [];
       for (let i = 0; i < pollAnswers.length; i++) {
         choiceTitles.push(pollAnswers[i]);
@@ -974,6 +1063,7 @@ framework.on('attachmentAction', async (bot, trigger) => {
             {
               type: "Input.ChoiceSet",
               choices: choices,
+              isMultiselect: `${isMultiselect}`,
               placeholder: "Placeholder text",
               style: "expanded",
               id: "polloption",
