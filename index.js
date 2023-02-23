@@ -11,13 +11,42 @@ const crypto = require('crypto');
 app.use(bodyParser.json());
 app.use(express.static("images"));
 
-///
-/// IMPORTANT INFORMATION:
-/// Hello! Thanks for looking at my bot code. There are a lot of things that I'm doing for the first time in code here,
-/// including HTTP requests, API interaction, even JavaScript and Node.js! (I usually code in C and Python.)
-/// So, if you see any code that could be expressed more efficiently or concisely, please submit a PR!
-/// Thank you, Gabe
-/// 
+
+
+/*                                                             
+*                          ?&B.                          .B&?                  
+*                          5@@^                          ^@@5                  
+*                  .7J:    5@@^    !J~            ^J!    ^@@5    :J7.          
+*                  ~@@J    5@@^   .&@G            G@&.   ^@@5    J@@~          
+*           7P?    ~@@J    5@@^   .&@G    :55:    G@&.   ^@@5    J@@~    ?P7   
+*           #@&.   ~@@Y    5@@^   .&@G    7@@7    G@&.   ^@@5    Y@@~    &@#   
+*           5&P    ^#&7    5@@^   .G&Y    ~##~    Y&G.   ^@@5    7&#^    P&5             
+*            ^      ^^     :@@:     ^      ^^      ^     :&@:     ^^      ^    
+*                                                                              
+*                                                                              
+*                   :!?JJ?:   !7!     ~?JJ?^'    .~?JJ?^     ^7JJ?!:           
+*                 :P&@&##&!   B@&.  :B@@P5G?   .Y&@@##&J   !B@@##&@&5:         
+*                .B@@?^       B@#.  ^@@&J^     P@@Y       !@@G^   '@@B.        
+*                :@@&:        B@#.   :?PB@@G: .#@@^       J@@J     O@@:        
+*                 J@@#Y77J^   B@&.     2!#@@~  7&@&Y77J!  :G@@P?@J#@@?         
+*                   ^YG#&&#~  P#G.  ~####BP!    :JG#&&&7    !5#&&#GY^          
+*                                                                                
+*                                                                                
+*  ██╗  ██╗██╗ ██████╗ ██╗  ██╗███████╗██╗██╗   ██╗███████╗    ██████╗  ██████╗ ████████╗
+*  ██║  ██║██║██╔════╝ ██║  ██║██╔════╝██║██║   ██║██╔════╝    ██╔══██╗██╔═══██╗╚══██╔══╝
+*  ███████║██║██║  ███╗███████║█████╗  ██║██║   ██║█████╗      ██████╔╝██║   ██║   ██║   
+*  ██╔══██║██║██║   ██║██╔══██║██╔══╝  ██║╚██╗ ██╔╝██╔══╝      ██╔══██╗██║   ██║   ██║              
+*  ██║  ██║██║╚██████╔╝██║  ██║██║     ██║ ╚████╔╝ ███████╗    ██████╔╝╚██████╔╝   ██║   
+*  ╚═╝  ╚═╝╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝     ╚═╝  ╚═══╝  ╚══════╝    ╚═════╝  ╚═════╝    ╚═╝   
+*
+*                                  IMPORTANT INFORMATION:
+*     Hello! Thanks for looking at my bot code. There are a lot of things that I'm doing for the  
+*   first time in code here, including HTTP requests, API interaction, even JavaScript and Node.js!
+*   So, if you see any code that could be expressed more efficiently or concisely, please submit a PR.
+*                 
+*     Thank you, 
+*                Gabe :)
+*/
 
 // Configuration
 const config = {
@@ -40,6 +69,25 @@ console.log("\n\n\n\nStarting framework... ");
 framework.on("Initialized, coming online...", () => {
   console.log("Bot is good to go! [Press CTRL-C to quit]");
 });
+
+/* End intro, begin
+*                                                _     
+*                                               | |    
+*   ___ ___  _ __ ___  _ __ ___   __ _ _ __   __| |___ 
+*  / __/ _ \| '_ ` _ \| '_ ` _ \ / _` | '_ \ / _` / __|
+* | (_| (_) | | | | | | | | | | | (_| | | | | (_| \__ \
+*  \___\___/|_| |_| |_|_| |_| |_|\__,_|_| |_|\__,_|___/
+*
+*/                                                     
+                     
+// 'help' command
+framework.hears (
+  "help",
+  async (bot) => {
+    highfivehelp(bot);
+  },
+  0
+)
 
 // debug command 'devcls'
 // Prints empty space into the chat for the purpose of allowing demonstrations without distractions in the chat history
@@ -91,17 +139,6 @@ framework.hears (
   async (bot, trigger) => {
     bot.say("markdown", `Hey ${trigger.person.firstName}!`);
   },
-  0
-)
-
-// 'help' command
-// Invokes framework.showHelp()
-framework.hears (
-  "help",
-  async (bot, trigger) => {
-    bot.say("markdown", framework.showHelp("Available Commands: ", "Any feedback or feature requests? Message gaberami@cisco.com. I don't bite!"));
-  },
-  "**help**: Show available bot commands.",
   0
 )
 
@@ -490,11 +527,17 @@ framework.hears (
   0
 )
 
-//
-// attachmentAction Handling
-//
-// Here's our main function where we listen to submission events for polls, freeform submissions, and anything else.
-// When a user interacts with an adaptive card sent by the bot, that interaction is handled here.
+/* End Commands, begin
+*        _   _             _                                _    ___       _   _             
+*       | | | |           | |                              | |  / _ \     | | (_)            
+*   __ _| |_| |_ __ _  ___| |__   __ _ _ __ ___   ___ _ __ | |_/ /_\ \ ___| |_ _  ___  _ __  
+*  / _` | __| __/ _` |/ __| '_ \ / _` | '_ ` _ \ / _ \ '_ \| __|  _  |/ __| __| |/ _ \| '_ \ 
+* | (_| | |_| || (_| | (__| | | | (_| | | | | | |  __/ | | | |_| | | | (__| |_| | (_) | | | |
+*  \__,_|\__|\__\__,_|\___|_| |_|\__,_|_| |_| |_|\___|_| |_|\__\_| |_/\___|\__|_|\___/|_| |_|
+*                                                                                           
+*  Here's our main function where we listen to submission events for polls, freeform submissions, and anything else.
+*  When a user interacts with an adaptive card sent by the bot, that interaction is handled here.
+*/
 
 framework.on('attachmentAction', async (bot, trigger) => {
   // attachedForm will contain all of the message data, i.e message id, personId, roomId, creation time.
@@ -505,6 +548,12 @@ framework.on('attachmentAction', async (bot, trigger) => {
 
   // Log the submission data
   console.log(`\n\n\nReceived Attachment:\n${JSON.stringify(trigger.attachmentAction, null, 2)}`);
+
+  // Handle helpDelete
+  // Submitted when a user clicks 'Delete this message' in the help command
+  if (formData.formType == "helpDelete") {
+    bot.censor(attachedForm.messageId);
+  }
 
   // Handle POLL SUBMISSIONS (pollResponse)
   // Submitted when a user selects an option in a poll and clicks 'Submit'
@@ -1330,6 +1379,255 @@ framework.on('attachmentAction', async (bot, trigger) => {
   }
 });
 
+/* End attachmentAction handling, begin
+*  _   _      _                    __                  _   _                 
+* | | | |    | |                  / _|                | | (_)                
+* | |_| | ___| |_ __   ___ _ __  | |_ _   _ _ __   ___| |_ _  ___  _ __  ___ 
+* |  _  |/ _ \ | '_ \ / _ \ '__| |  _| | | | '_ \ / __| __| |/ _ \| '_ \/ __|
+* | | | |  __/ | |_) |  __/ |    | | | |_| | | | | (__| |_| | (_) | | | \__ \
+* \_| |_/\___|_| .__/ \___|_|    |_|  \__,_|_| |_|\___|\__|_|\___/|_| |_|___/
+*              | |                                                           
+*              |_|                                                           
+*/
+
+// Helper function to replace the framework default function
+// This helper function requires MANUAL update of the function to accomodate new commands. (but it's way prettier and worth it)
+function highfivehelp(bot) {
+  const helpcard = {
+      "type": "AdaptiveCard",
+      "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+      "version": "1.0",
+      "body": [
+          {
+              "type": "Container",
+              "items": [
+                  {
+                      "type": "TextBlock",
+                      "text": "Available Commands 🤖",
+                      "wrap": true,
+                      "size": "Large",
+                      "weight": "Bolder"
+                  },
+                  {
+                      "type": "RichTextBlock",
+                      "inlines": [
+                          {
+                              "type": "TextRun",
+                              "text": "Don't forget to mention me when using a command in a Space.\ni.e",
+                              "size": "Small"
+                          },
+                          {
+                              "type": "TextRun",
+                              "text": " @Highfive poll",
+                              "fontType": "Monospace",
+                              "size": "Small",
+                              "color": "Accent"
+                          }
+                      ],
+                      "spacing": "None"
+                  },
+                  {
+                      "type": "ColumnSet",
+                      "columns": [
+                          {
+                              "type": "Column",
+
+
+
+                              "items": [
+                                  {
+                                      "type": "RichTextBlock",
+                                      "inlines": [
+                                          {
+                                              "type": "TextRun",
+                                              "text": "📃 freeform",
+                                              "fontType": "Monospace",
+                                              "weight": "bolder"
+                                          }
+                                      ]
+                                  },
+                                  {
+                                      "type": "RichTextBlock",
+                                      "inlines": [
+                                          {
+                                              "type": "TextRun",
+                                              "text": "Create a freeform question for your Space to answer. Answers have a limit of 500 characters."
+                                          }
+                                      ],
+                                      "spacing": "None"
+                                  },
+                                  {
+                                      "type": "RichTextBlock",
+                                      "inlines": [
+                                          {
+                                              "type": "TextRun",
+                                              "text": "🔖 poll",
+                                              "fontType": "Monospace",
+                                              "weight": "bolder"
+                                          }
+                                      ]
+                                  },
+                                  {
+                                      "type": "RichTextBlock",
+                                      "inlines": [
+                                          {
+                                              "type": "TextRun",
+                                              "text": "Create a poll! Command inspired by Pollbot--they're not open-source, though!"
+                                          }
+                                      ],
+                                      "spacing": "None"
+                                  },
+                                  {
+                                      "type": "RichTextBlock",
+                                      "inlines": [
+                                          {
+                                              "type": "TextRun",
+                                              "text": "🔥 gas",
+                                              "fontType": "Monospace",
+                                              "weight": "bolder"
+                                          }
+                                      ]
+                                  },
+                                  {
+                                      "type": "RichTextBlock",
+                                      "inlines": [
+                                          {
+                                              "type": "TextRun",
+                                              "text": "Commend someone anonymously! Only works in direct messages with this bot."
+                                          }
+                                      ],
+                                      "spacing": "None"
+                                  },
+                                  {
+                                      "type": "RichTextBlock",
+                                      "inlines": [
+                                          {
+                                              "type": "TextRun",
+                                              "text": "✋ highfivecard [recipient-email]",
+                                              "fontType": "Monospace",
+                                              "weight": "bolder"
+                                          }
+                                      ]
+                                  },
+                                  {
+                                      "type": "RichTextBlock",
+                                      "inlines": [
+                                          {
+                                              "type": "TextRun",
+                                              "text": "Creates High Five recognition cards for users in chat! Supports multiple emails."
+                                          }
+                                      ],
+                                      "spacing": "None"
+                                  },
+                                  {
+                                      "type": "RichTextBlock",
+                                      "inlines": [
+                                          {
+                                              "type": "TextRun",
+                                              "text": "🎉 birthdaycard [recipient-email]",
+                                              "fontType": "Monospace",
+                                              "weight": "bolder"
+                                          }
+                                      ]
+                                  },
+                                  {
+                                      "type": "RichTextBlock",
+                                      "inlines": [
+                                          {
+                                              "type": "TextRun",
+                                              "text": "Highlight a birthday person in chat! Supports multiple emails."
+                                          }
+                                      ],
+                                      "spacing": "None"
+                                  },
+                                  {
+                                      "type": "RichTextBlock",
+                                      "inlines": [
+                                          {
+                                              "type": "TextRun",
+                                              "text": "📧 getallemails",
+                                              "fontType": "Monospace",
+                                              "weight": "bolder"
+                                          }
+                                      ]
+                                  },
+                                  {
+                                      "type": "RichTextBlock",
+                                      "inlines": [
+                                          {
+                                              "type": "TextRun",
+                                              "text": "Receive a list of all emails in this space."
+                                          }
+                                      ],
+                                      "spacing": "None"
+                                  },
+                                  {
+                                      "type": "RichTextBlock",
+                                      "inlines": [
+                                          {
+                                              "type": "TextRun",
+                                              "text": "🦮 help",
+                                              "fontType": "Monospace",
+                                              "weight": "bolder"
+                                          }
+                                      ]
+                                  },
+                                  {
+                                      "type": "RichTextBlock",
+                                      "inlines": [
+                                          {
+                                              "type": "TextRun",
+                                              "text": "Show this card."
+                                          }
+                                      ],
+                                      "spacing": "None"
+                                  },
+                                  {
+                                      "type": "RichTextBlock",
+                                      "inlines": [
+                                          {
+                                              "type": "TextRun",
+                                              "text": "🐸 about",
+                                              "fontType": "Monospace",
+                                              "weight": "bolder"
+                                          }
+                                      ]
+                                  },
+                                  {
+                                      "type": "RichTextBlock",
+                                      "inlines": [
+                                          {
+                                              "type": "TextRun",
+                                              "text": "Display information about this bot."
+                                          }
+                                      ],
+                                      "spacing": "None"
+                                  }
+                              ]
+
+
+
+                          }
+                      ],
+                      "style": "emphasis"
+                  }
+              ]
+          }
+      ],
+      "actions": [
+          {
+              "type": "Action.Submit",
+              "title": "Delete this message",
+              "data": {
+                  "formType": "helpDelete",
+                  "endpoint": `${process.env.WEBHOOKURL}/submit`
+              }
+          }
+      ]
+  };
+  bot.sendCard(helpcard, "Help Card");
+}
+
 // This function will get a person's first name by first calling getPersonDetails.
 async function getFirstName(personId) {
   // Try to retrieve person's details
@@ -1406,10 +1704,7 @@ async function getPollResults(pollId, isAnonymous) {
   }
 }
 
-// This logic here is where we take items from a poll response and organize the data.
-// From a poll submission, that poll's ID, that person's ID, and their selected option is taken and put into a JSON.
-// Organized by filename being the pollID.
-// TODO: Change all of this to use SQL instead of JSONs.
+// submitPollResponse will take a poll response and put it into a file associated with its pollId.
 function submitPollResponse(pollId, personId, selectedOption) {
   const submissionPath = `./submissions/${pollId}.json`;
 
@@ -1564,7 +1859,7 @@ framework.hears (
   async (bot, trigger) => {
     console.log(`Catch-all handler: ${trigger.text}`);
     bot.say(`Sorry, I not sure how to respond to "${trigger.text}".`)
-      .then(() => bot.say("markdown", framework.showHelp("Available Commands: ", "Any feedback or feature requests? Message gaberami@cisco.com. I don't bite!")))
+      .then((highfivehelp(bot)))
       .catch(e =>
         console.error(`Problem in the unexpected command handler: ${e.message}`)
       );
@@ -1611,17 +1906,6 @@ app.get("/", (req, res) => {
 // Here's where our webhook is listening for requests and data.
 app.post("/", webhook(framework));
 app.post("/submit", webhook(framework));
-
-// Here we specify which port we're listening to.
 app.listen(config.port, () => {
-  framework.debug("Framework listening on port %s", config.port);
-});
-
-// Shutdown procedure (CTRL-C in terminal)
-process.on("SIGINT", () => {
-  framework.debug("Shutting down...");
-  server.close();
-  framework.stop().then(() => {
-    process.exit();
-  });
+  framework.debug('Framework listening on port %s', config.port);
 });
