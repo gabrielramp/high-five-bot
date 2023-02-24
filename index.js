@@ -1041,42 +1041,80 @@ framework.on('attachmentAction', async (bot, trigger) => {
           value: pollAnswers[i],
         };
         choices.push(choice);
-      } 
+      }
+
+      // If the poll contains an Other Option,
+      if (hasOther == true) {
+        // Then create the option
+        let otherOption =
+        {
+          title: "Other", 
+          value: "otherOption"
+        }
+        // Push it to the choice list
+        choices.push(otherOption);
+        // Then make a container with the text box
+      }
 
       // Then we'll deleet the "Create a New Freeform Question" message
       bot.censor(attachedForm.messageId);
 
+      let bodyBlock = []
+
+      let bodyBlockLabel = {
+        type: "TextBlock",
+        text: `From **${formData.trigger.person.firstName}**:\n ${pollQuestionTitle}`,
+        wrap: true,
+        size: "Medium",
+        weight: "Default",
+      };
+      bodyBlock.push(bodyBlockLabel);
+
+      let bodyBlockChoices = {
+        type: "Input.ChoiceSet",
+        choices: choices,
+        isMultiSelect: isMultiselect,
+        placeholder: "Placeholder text",
+        style: "expanded",
+        id: "polloption",
+      };
+      bodyBlock.push(bodyBlockChoices);
+
+      if (hasOther == true) {
+        let bodyBlockOtherAnswer = {
+          type: "Container",
+          id: "toggleContainer",
+          spacing: "None",
+          items: [
+              {
+                  type: "Input.Text",
+                  placeholder: "Please specify",
+                  spacing: "None",
+                  id: "otherAnswer"
+              }
+          ]
+        };
+        bodyBlock.push(bodyBlockOtherAnswer);
+      }
+      
+      let bodyBlockAnonText = {
+        type: "TextBlock",
+        text: `${anonText}`,
+        wrap: true,
+        size: "Small",
+        weight: "Default",
+        spacing: "Medium",
+      };
+      bodyBlock.push(bodyBlockAnonText);
+
       // And send a new card with their question:
+      console.log(`DEBUG: POLL CREATE: isMultiselect: ${isMultiselect}, hasOther: ${hasOther}`)
       let pollCard = 
         {
           type: "AdaptiveCard",
           $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
           version: "1.0",
-          body: [
-            {
-              type: "TextBlock",
-              text: `From **${formData.trigger.person.firstName}**:\n ${pollQuestionTitle}`,
-              wrap: true,
-              size: "Medium",
-              weight: "Default",
-            },
-            {
-              type: "Input.ChoiceSet",
-              choices: choices,
-              isMultiselect: `${isMultiselect}`,
-              placeholder: "Placeholder text",
-              style: "expanded",
-              id: "polloption",
-            },
-            {
-              type: "TextBlock",
-              text: `${anonText}`,
-              wrap: true,
-              size: "Small",
-              weight: "Default",
-              spacing: "Medium",
-            },
-          ],
+          body: bodyBlock,
           actions: [
             {
               type: "Action.Submit",
@@ -1092,8 +1130,9 @@ framework.on('attachmentAction', async (bot, trigger) => {
           ]
         };
 
+        console.log(`Sending card...`)
         // Send the new pollinto the chat
-        bot.sendCard (
+        await bot.sendCard (
           pollCard,
           "New Poll"
         );
