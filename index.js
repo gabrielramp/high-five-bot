@@ -111,7 +111,7 @@ let dummycard =
     ],
       isMultiselect: "true",
       style: "expanded",
-      id: "polloption",
+      id: "selectedOptions",
     },
     {
       type: "Input.Text",
@@ -640,10 +640,11 @@ framework.on('attachmentAction', async (bot, trigger) => {
   // Handle POLL SUBMISSIONS (pollResponse)
   // Submitted when a user selects an option in a poll and clicks 'Submit'
   if (formData.formType == "pollResponse") {
+
     console.log("Handling 'pollResponse': Poll Selection Submission");
 
     // Submit the response to have it saved
-    submitPollResponse(formData.formId, attachedForm.personId, formData.polloption);
+    submitPollResponse(formData.formId, attachedForm.personId, formData.selectedOptions, formData.hasOther, formData.isMultiselect, formData.otherAnswer);
   }
 
   // Handle POLL STATUS REQUEST (pollrequest)
@@ -665,10 +666,12 @@ framework.on('attachmentAction', async (bot, trigger) => {
     // Then we call our handy getPollResults() which will handle gathering all of the data.
     try {
       // Retrieve the poll results from the JSON.
-      const results = await getPollResults(pollId, isAnonymous);
+      const results = await getPollResultsCard(pollId, choiceTitles);
+
+      bot.sendCard(results, "resultscard");
 
       // allOptions is a Set which contains all of the titles of each choice. We remove these titles to use the remaining ones.
-      const allOptions = new Set(choiceTitles);
+      /*const allOptions = new Set(choiceTitles);
 
       // dynamicResults will contain the Microsoft Adaptive Card format of all the information we retrieved.
       let dynamicResults = [];
@@ -774,13 +777,13 @@ framework.on('attachmentAction', async (bot, trigger) => {
         ]
       }
 
-      // Then we send the reponse with the current results of the poll!
+      // Then we send the response with the current results of the poll!
       bot.sendCard(
         pollresults,
         // Error message if applicable.
         "pollresults"
       )
-      bot.censor(attachedForm.messageId);
+      bot.censor(attachedForm.messageId);*/
     } catch(error) {
       console.log (`There was an error reading the poll results for poll ID ${pollId}.\n` + error);
     }
@@ -792,7 +795,7 @@ framework.on('attachmentAction', async (bot, trigger) => {
     console.log(`DEBUG: Received freeformCreate type.`);
     // First we'll check if the person that submitted the freeform question also triggered the bot to send it in the first place.
     if (attachedForm.personId == formData.trigger.person.id) {
-      // Then we'll deleet the "Create a New Freeform Question" message
+      // Then we'll delete the "Create a New Freeform Question" message
       bot.censor(attachedForm.messageId);
 
       // Anonymous text changes depending on whether the question is anonymous or not
@@ -1076,7 +1079,7 @@ framework.on('attachmentAction', async (bot, trigger) => {
         isMultiSelect: isMultiselect,
         placeholder: "Placeholder text",
         style: "expanded",
-        id: "polloption",
+        id: "selectedOptions",
       };
       bodyBlock.push(bodyBlockChoices);
 
@@ -1120,6 +1123,8 @@ framework.on('attachmentAction', async (bot, trigger) => {
               type: "Action.Submit",
               title: "Submit",
               data: {
+                "isMultiselect": formData.isMultiselect,
+                "hasOther": formData.hasOther,
                 "isAnonymous": formData.isAnonymous,
                 "choiceTitles": choiceTitles,
                 "formType": "pollResponse",
@@ -1131,7 +1136,7 @@ framework.on('attachmentAction', async (bot, trigger) => {
         };
 
         console.log(`Sending card...`)
-        // Send the new pollinto the chat
+        // Send the new poll into the chat
         await bot.sendCard (
           pollCard,
           "New Poll"
@@ -1165,6 +1170,8 @@ framework.on('attachmentAction', async (bot, trigger) => {
               type: "Action.Submit",
               title: "View Current Results",
               data: {
+                "hasOther": formData.hasOther,
+                "isMultiselect": formData.isMultiselect,
                 "isAnonymous": formData.isAnonymous,
                 "choiceTitles": choiceTitles,
                 "formTitle": `${formData.questionBox}`,
@@ -1787,7 +1794,73 @@ function buildTextFreeformResponsesAnonymous (freeformResponses) {
   return freeformResponsesCardText;
 }
 
-// This function will find all of the data points in a specific JSON specified by its pollId, and fetch all of the choices made by each user.
+async function getPollResultsCard(pollId, choiceTitles) {
+  const submissionPath = `./submissions/${pollId}.json`;
+
+  // Check if submission file exists, if not, throw an error
+  if (!fs.existsSync(submissionPath)) {
+    throw new Error(`Submission file for poll ${pollId} does not exist.`);
+  }
+
+  // Initialize choiceStats object array
+  let choiceStats = {};
+  for (const choice of choiceTitles) {
+    choiceStats[choice] = {
+      count: 0,
+      whoChose: []
+    };
+  }
+
+  // Initialize otherAnswerArray object array
+  let otherAnswerArray = {};
+
+  // Loop through every submission in the submission file
+  const submissions = JSON.parse(fs.readFileSync(submissionPath));
+  for (const personId in submissions) {
+    const selectedOptions = submissions[personId].selectedOptions;
+    const choseOther = submissions[personId].choseOther;
+    const otherAnswer = submissions[personId].otherAnswer;
+    const selectorName = await getFirstName(personId);
+
+    // Loop through every selected option in person's submission
+    for (const selectedOption of selectedOptions) {
+      if (choiceStats[selectedOption]) {
+        choiceStats[selectedOption].count++;
+
+        if (!choiceStats[selectedOption].whoChose.includes(selectorName)) {
+          choiceStats[selectedOption].whoChose.push(selectorName);
+        }
+
+        // Remove choice from choiceTitles array
+        const index = choiceTitles.indexOf(selectedOption);
+        if (index > -1) {
+          choiceTitles.splice(index, 1);
+        }
+      }
+    }
+
+    // Handle 'choseOther'
+    if (choseOther) {
+      otherAnswerArray[selectorName] = otherAnswer;
+    }
+  }
+
+  // Log objects to console
+  console.log("choiceTitles:", choiceTitles);
+  console.log("choiceStats:", choiceStats);
+  console.log("otherAnswerArray:", otherAnswerArray);
+
+  // Return object containing choiceTitles, choiceStats, and otherAnswerArray
+  return {
+    choiceTitles: choiceTitles,
+    choiceStats: choiceStats,
+    otherAnswerArray: otherAnswerArray
+  };
+}
+
+
+
+/*// This function will find all of the data points in a specific JSON specified by its pollId, and fetch all of the choices made by each user.
 async function getPollResults(pollId, isAnonymous) {
 
   // Find the file
@@ -1831,10 +1904,56 @@ async function getPollResults(pollId, isAnonymous) {
   } catch (error) {
     throw error;
   }
+}*/
+
+function submitPollResponse(pollId, personId, selectedOption, hasOther, isMultiselect, questionBox) {
+  console.log(`DEBUG: submitPollResponse received poll submission. Attempting to save these attributes:
+  \npollId: ${pollId}
+  \npersonId: ${personId}
+  \nselectedOption: ${selectedOption}
+  \nhasOther: ${hasOther}
+  \nisMultiselect: ${isMultiselect}
+  \nquestionBox: ${questionBox}`);
+
+  const submissionPath = `./submissions/${pollId}.json`;
+
+  let submissions = {};
+
+  // Check if submission file exists, if not, create an empty object
+  if (fs.existsSync(submissionPath)) {
+    submissions = JSON.parse(fs.readFileSync(submissionPath));
+  }
+
+  // Create person's submission object
+  let personSubmission = {
+    choseOther: false,
+    selectedOptions: [],
+    otherAnswer: ""
+  };
+
+  // Update person's submission object
+  if (hasOther && selectedOption.includes("otherOption")) {
+    personSubmission.choseOther = true;
+    selectedOption = selectedOption.replace("otherOption", "").trim();
+    personSubmission.otherAnswer = questionBox;
+  }
+
+  if (isMultiselect) {
+    personSubmission.selectedOptions = selectedOption.split(",").filter(Boolean);
+  } else {
+    personSubmission.selectedOptions = [selectedOption];
+  }
+
+  // Replace existing submission if person has submitted before
+  submissions[personId] = personSubmission;
+
+  // Write updated submission to file
+  fs.writeFileSync(submissionPath, JSON.stringify(submissions));
 }
 
+
 // submitPollResponse will take a poll response and put it into a file associated with its pollId.
-function submitPollResponse(pollId, personId, selectedOption) {
+/*function submitPollResponse(pollId, personId, selectedOption, hasOther, isMultiselect, questionBox) {
   const submissionPath = `./submissions/${pollId}.json`;
 
   let submissions = {};
@@ -1849,7 +1968,7 @@ function submitPollResponse(pollId, personId, selectedOption) {
 
   // Write updated submission to file
   fs.writeFileSync(submissionPath, JSON.stringify(submissions));
-}
+}*/
 
 // submitFreeformResponse will take a question response and put it into a file associated with its formId.
 function submitFreeformResponse(freeformId, personId, freeformResponse) {
