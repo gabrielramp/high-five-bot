@@ -59,21 +59,21 @@ Syntax: ``poll``
 
 Evokes the bot to post an adaptive card with text inputs for creating a new poll. Only the user that evoked the bot can submit this card.
 
-This command can handle an infinite number of poll answers, separated in the text box by ';' semicolons.
+This command can handle an infinite number of poll answers, separated in the text box by ';' semicolons. This poll can handle multi-select, and toggle between anonymous and non-anonymous poll results. Enabling the 'Other' freeform option will allow the poll takers to submit their answer as 'Other' and specify their choice in a text box.
 
-![image](https://user-images.githubusercontent.com/86631042/219976092-4e277b40-9350-44ad-a6f0-97c1ffa57786.png)
+![image](https://user-images.githubusercontent.com/86631042/221441681-9d0476e6-5130-49de-911a-f4a3fa77f31e.png)
 
 Once submitted, the message is deleted and replaced with the created poll:
 
-![image](https://i.imgur.com/2CQLJQg.gif)
+![image](https://i.imgur.com/pHG7qYb.gif)
 
 Simultaneously, the evoker is sent a direct message with a card telling them how to view the results of the poll:
 
-![image](https://user-images.githubusercontent.com/86631042/219922173-001e0d25-dd33-4d29-ad5f-80ca81570fe0.png)
+![image](https://user-images.githubusercontent.com/86631042/221441908-115d6d85-722c-4afe-b345-1974b4df45ff.png)
 
 Clicking "View Current Results" will message the user with the current results:
 
-![image](https://user-images.githubusercontent.com/86631042/219922228-48b04e3e-ce64-4c18-9d38-38a50cc4bc4a.png)
+![image](https://user-images.githubusercontent.com/86631042/221442225-27aeef1f-9a20-41b8-bb9f-0ec0a3cefe70.png)
 
 ### freeform
 

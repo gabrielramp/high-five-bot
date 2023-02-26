@@ -80,71 +80,12 @@ framework.on("Initialized, coming online...", () => {
 *
 */                     
 
-let dummycard = 
-{
-  type: "AdaptiveCard",
-  $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
-  version: "1.0",
-  body: [
-    {
-      type: "TextBlock",
-      text: `From **Gabe**:\n Sample Poll`,
-      wrap: "true",
-      size: "Medium",
-      weight: "Default",
-    },
-    {
-      type: "Input.ChoiceSet",
-      choices: [
-        {
-            title: "Option 1",
-            value: "Option 1"
-        },
-        {
-            title: "Option 2",
-            value: "Option 2"
-        },
-        {
-          title: "Other",
-          value: "Other"
-        }
-    ],
-      isMultiselect: "true",
-      style: "expanded",
-      id: "selectedOptions",
-    },
-    {
-      type: "Input.Text",
-      placeholder: "Please specify",
-      spacing: "None"
-    },
-    {
-      type: "TextBlock",
-      text: `Your choices will be anonymous.`,
-      wrap: "true",
-      size: "Small",
-      weight: "Default",
-      spacing: "Medium",
-    },
-  ],
-  actions: [
-    {
-      type: "Action.Submit",
-      title: "Submit",
-      data: {
-        "formType": "pollResponse",
-        "formId": `test`,
-        "endpoint": `test`
-      }
-    }
-  ]
-};
-
+let dummycard = require ("./templates/about.json");
 // 'help' command
 framework.hears (
   "testcard",
   (bot) => {
-    bot.sendCard(testcard, "test card");
+    bot.sendCard(dummycard, "test card");
   },
   0
 )
@@ -171,12 +112,11 @@ framework.hears (
 
 // 'about' command
 // Displays normal information about the bot
+let aboutcard = require ("./templates/about.json");
 framework.hears(
   "about",
   (bot, trigger) => {
-    bot.say(`made by Gabe with <3
-            \nhttps://www.youtube.com/watch?v=9JnGuLUvE4A
-            \nSpecial Thanks to Brad, Max, and Julianna for testing the bot!`);
+    bot.sendCard(aboutcard, "About Card");
   },
   "**about**: Show information about this bot",
   0
@@ -758,7 +698,7 @@ framework.on('attachmentAction', async (bot, trigger) => {
         // And finally, we will create a block of answers that users who chose the 'Other' options specified.
         const otherAnswerBlock = {
           type: "Container",
-          sacing: "Small",
+          spacing: "Small",
           items: []
         };
 
