@@ -78,7 +78,77 @@ framework.on("Initialized, coming online...", () => {
 * | (_| (_) | | | | | | | | | | | (_| | | | | (_| \__ \
 *  \___\___/|_| |_| |_|_| |_| |_|\__,_|_| |_|\__,_|___/
 *
-*/                                                     
+*/                     
+
+let dummycard = 
+{
+  type: "AdaptiveCard",
+  $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+  version: "1.0",
+  body: [
+    {
+      type: "TextBlock",
+      text: `From **Gabe**:\n Sample Poll`,
+      wrap: "true",
+      size: "Medium",
+      weight: "Default",
+    },
+    {
+      type: "Input.ChoiceSet",
+      choices: [
+        {
+            title: "Option 1",
+            value: "Option 1"
+        },
+        {
+            title: "Option 2",
+            value: "Option 2"
+        },
+        {
+          title: "Other",
+          value: "Other"
+        }
+    ],
+      isMultiselect: "true",
+      style: "expanded",
+      id: "selectedOptions",
+    },
+    {
+      type: "Input.Text",
+      placeholder: "Please specify",
+      spacing: "None"
+    },
+    {
+      type: "TextBlock",
+      text: `Your choices will be anonymous.`,
+      wrap: "true",
+      size: "Small",
+      weight: "Default",
+      spacing: "Medium",
+    },
+  ],
+  actions: [
+    {
+      type: "Action.Submit",
+      title: "Submit",
+      data: {
+        "formType": "pollResponse",
+        "formId": `test`,
+        "endpoint": `test`
+      }
+    }
+  ]
+};
+
+// 'help' command
+framework.hears (
+  "testcard",
+  (bot) => {
+    bot.sendCard(testcard, "test card");
+  },
+  0
+)
+                   
                      
 // 'help' command
 framework.hears (
@@ -133,7 +203,7 @@ framework.hears(
 );
 
 // 'hi highfive' command
-// Just a high five command. Useful for demonstrations.
+// Just a hello command. Useful for demonstrations.
 framework.hears (
   "Hi Highfive!",
   async (bot, trigger) => {
@@ -325,6 +395,18 @@ framework.hears (
                 "title": "Anonymous answers",
                 "id": "isAnonymous",
                 "value": "true"
+              },
+              {
+                "type": "Input.Toggle",
+                "title": "Enable Multi-select",
+                "id": "isMultiselect",
+                "value": "false"
+              },
+              {
+                "type": "Input.Toggle",
+                "title": "Create \"Other\" freeform option",
+                "id": "hasOther",
+                "value": "false"
               }
           ],
           actions: [
@@ -549,271 +631,429 @@ framework.on('attachmentAction', async (bot, trigger) => {
   // Log the submission data
   console.log(`\n\n\nReceived Attachment:\n${JSON.stringify(trigger.attachmentAction, null, 2)}`);
 
-  // Handle helpDelete
-  // Submitted when a user clicks 'Delete this message' in the help command
-  if (formData.formType == "helpDelete") {
-    bot.censor(attachedForm.messageId);
-  }
+  switch (formData.formType) {
+    // Handle helpDelete
+    // Submitted when a user clicks 'Delete this message' in the help command
+    case "helpDelete": {
+      try {
+        await bot.censor(attachedForm.messageId);
+      } catch (e) {
+        console.log(e);
+      }
+      break;
+    }
 
-  // Handle POLL SUBMISSIONS (pollResponse)
-  // Submitted when a user selects an option in a poll and clicks 'Submit'
-  if (formData.formType == "pollResponse") {
-    console.log("Handling 'pollResponse': Poll Selection Submission");
+    // Handle POLL SUBMISSIONS (pollResponse)
+    // Submitted when a user selects an option in a poll and clicks 'Submit'
+    case "pollResponse": {
+      console.log("Handling 'pollResponse': Poll Selection Submission");
+      // Submit the response to have it saved
+      submitPollResponse(formData.formId, attachedForm.personId, formData.selectedOptions, formData.hasOther, formData.isMultiselect, formData.otherAnswer);
+      break;
+    }
 
-    // Submit the response to have it saved
-    submitPollResponse(formData.formId, attachedForm.personId, formData.polloption);
-  }
+    // Handle POLL STATUS REQUEST (pollrequest)
+    // Submitted when a user with a follow-up DM from the bot clicks 'View Current Results'; See 'pollfollowupcard' for template and logic.
+    case "pollrequest": {
+      // formTitle is the string English title of the original poll
+      let formTitle = formData.formTitle;
+      // pollId is the hex specifier of the original poll (and name of the JSON file containing its data)
+      const pollId = trigger.attachmentAction.inputs.formId;
+      // isAnonymous will determine whether the results will be printed with the names of every person who chose that result under them.
+      const isAnonymous = Boolean(formData.isAnonymous);
 
-  // Handle POLL STATUS REQUEST (pollrequest)
-  // Submitted when a user with a follow-up DM from the bot clicks 'View Current Results'; See 'pollfollowupcard' for template and logic.
-  if (formData.formType == "pollrequest") {
+      console.log(`Poll status request made for poll ${pollId}.`);
+      console.log("\nResults: ");
 
-    // choiceTitles is a string array of all possible options in the poll 
-    let choiceTitles = formData.choiceTitles;
-    // formTitle is the string English title of the original poll
-    let formTitle = formData.formTitle;
-    // pollId is the hex specifier of the original poll (and name of the JSON file containing its data)
-    const pollId = trigger.attachmentAction.inputs.formId;
-    // isAnonymous will determine whether the results will be printed with the names of every person who chose that result under them.
-    const isAnonymous = formData.isAnonymous;
+      // Then we call our handy getPollResultsCard() which will handle gathering all of the data.
+      try {
+        /* 
+        * Retrieve the poll results from the JSON. Returned will be an object array which contains data in this format:
+        *   
+        *   results = {
+        *        choiceTitles: [string array of the titles of the options that did not receive votes]
+        *        choiceStats: {
+        *          [string of choice option]: {
+        *            count: [integer representing the number of 'votes' the choice received]
+        *            whoChose: [string array of first names that chose this option]
+        *          },
+        *          [string of choice option]: {
+        *            count: [integer representing the number of 'votes' the choice received]
+        *            whoChose: [string array of first names that chose this option]
+        *          }
+        *        }
+        *        otherAnswerArray: {
+        *          [firstname]: [otherAnswer],
+        *          [firstname]: [otherAnswer]
+        *        }
+        *   }
+        */
+        console.log('getting poll results...');
 
-    console.log(`Poll status request made for poll ${pollId}.`);
-    console.log("\nResults: ");
+        let titlesDuplicate = formData.choiceTitles.slice();
+        const results = await getPollResultsCard(pollId, titlesDuplicate);
+        
+        console.log(`Now starting to build the block...`);
+        // Get the objects from results 
+        const choiceTitles = results.choiceTitles;
+        const choiceStats = results.choiceStats;
+        const otherAnswerArray = results.otherAnswerArray;
 
-    // Then we call our handy getPollResults() which will handle gathering all of the data.
-    try {
-      // Retrieve the poll results from the JSON.
-      const results = await getPollResults(pollId, isAnonymous);
+        // dynamicResults will hold the Microsoft Adaptive Card body elements that we'll plug into the card.
+        let dynamicResults = []
 
-      // allOptions is a Set which contains all of the titles of each choice. We remove these titles to use the remaining ones.
-      const allOptions = new Set(choiceTitles);
+        // Loop for each option choice in the poll
+        Object.keys(choiceStats).forEach((option) => {
+          // Skip this choice if the count is 0
+          if (choiceStats[option].count <= 0) {
+            return;
+          }
+          let count = choiceStats[option].count;
 
-      // dynamicResults will contain the Microsoft Adaptive Card format of all the information we retrieved.
-      let dynamicResults = [];
-
-      // Now we're going to loop for each option present in the results (options that have not been 'voted for' are not in this object array.).
-      results.forEach((option) => {
-        // How many voted for this option
-        const count = option.score;
-
-        // Title of the option
-        const selectedOptionTitle = option.selectedOption;
-
-        // List of names who voted for this option
-        const selectorNames = option.selectors;
-
-        // debug
-        console.log(`${selectedOptionTitle}: ${count}`);
-        console.log(`Selectors: ${selectorNames.join(', ')}`);
-
-        // Create a single 'block' of text for this 
-        let singleresult =
+          let singleresult = 
           {
             type: "TextBlock",
-            text: `${selectedOptionTitle}: ${count}`,
+            text: `${option}: ${count}`,
             weight: "Bolder",
             spacing: "Small",
             size: "Medium",
           };
-        
-        // If the 'isAnonymous' flag is set to false, add a text box to display the names of the selectors
-        if (isAnonymous == false) {
-          // Bring all names into one string separated by comma
-          let selectorText = selectorNames.join(', ');
 
-          // Textblock of selectors
-          const selectorBlock = 
-          {
+          if (Boolean(isAnonymous) == false) {
+            // Create list of names
+            let selectorText = choiceStats[option].whoChose.join(', ');
+
+            // Textblock of selectors
+            const selectorBlock = 
+            {
+              type: "TextBlock",
+              text: `${selectorText}`,
+              wrap: true,
+              spacing: "Small",
+              size: "Small",
+            };
+
+            // Push singleresult and selectorBlock
+            dynamicResults.push(singleresult, selectorBlock);
+          }
+          else {
+            dynamicResults.push(singleresult);
+          }
+        });
+
+        // Then loop for the choices that did not get a vote
+        choiceTitles.forEach(option => {
+          let singleresult =
+            {
+              type: "TextBlock",
+              text: `${option}: 0`,
+              weight: "Bolder",
+              spacing: "Small",
+              size: "Medium",
+            };
+          
+          dynamicResults.push(singleresult);
+        });
+
+        // And finally, we will create a block of answers that users who chose the 'Other' options specified.
+        const otherAnswerBlock = {
+          type: "Container",
+          sacing: "Small",
+          items: []
+        };
+
+        const otherAnswerTitle = {
+          type: "TextBlock",
+          text: `Other: ${Object.keys(otherAnswerArray).length}`,
+          weight: "Bolder",
+          spacing: "None",
+          size: "Medium",
+        }
+
+        otherAnswerBlock.items.push(otherAnswerTitle);
+        
+        Object.keys(otherAnswerArray).forEach((name) => {
+          const answerText = otherAnswerArray[name];
+        
+          const singleAnswer = {
             type: "TextBlock",
-            text: `${selectorText}`,
+            text: `\"${answerText}\"`,
             wrap: true,
             spacing: "Small",
             size: "Small",
           };
-
-          // Push singleresult and selectorBlock
-          dynamicResults.push(singleresult, selectorBlock);
-        }
-        // If not anonymous, just push results
-        else {
-          dynamicResults.push(singleresult);
-        }
-
-        // Remove the selected option from the list of all options, so that we can find the remaining options
-        allOptions.delete(selectedOptionTitle);
-      });
-
-      // Loop through the remaining options and add them to the dynamicResults array, with a count of 0
-      allOptions.forEach(option => {
-        let singleresult =
-          {
-            type: "TextBlock",
-            text: `${option}: 0`,
-            weight: "Bolder",
-            spacing: "Small",
-            size: "Medium",
-          };
         
-        dynamicResults.push(singleresult);
-      });
-
-      // Followed by our actual Adaptive Card template.
-      let pollresults =
-      {
-        type: "AdaptiveCard",
-        $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
-        version: "1.2",
-        body: [
-          {
-            type: "TextBlock",
-            text: `🎉 Here are the current results for your poll, "${formTitle}":`,
-            wrap: true,
-            size: "Large",
-            weight: "Default",
-          },
-          {
-            type: "Container",
-            items: dynamicResults,
-          },
-        ],
-        actions: [
-          {
-            type: "Action.Submit",
-            title: "View Updated Results",
-            data: {
-              "isAnonymous": isAnonymous,
-              "choiceTitles": choiceTitles,
-              "formTitle": `${formTitle}`,
-              "formType": "pollrequest",
-              "formId": `${pollId}`,
-              "endpoint": `${process.env.WEBHOOKURL}/submit`
-            }
+          if (!Boolean(isAnonymous)) {
+            const nameBlock = {
+              type: "TextBlock",
+              text: `${name}:`,
+              wrap: true,
+              weight: "Bolder",
+              spacing: "Small",
+              size: "Small",
+            };
+            otherAnswerBlock.items.push(nameBlock, singleAnswer);
           }
-        ]
-      }
+          else {
+            otherAnswerBlock.items.push(singleAnswer);
+          }
+        });
+        
+        // Push the otherAnswerBlock to the dynamicResults array
+        dynamicResults.push(otherAnswerBlock);
 
-      // Then we send the reponse with the current results of the poll!
-      bot.sendCard(
-        pollresults,
-        // Error message if applicable.
-        "pollresults"
-      )
-      bot.censor(attachedForm.messageId);
-    } catch(error) {
-      console.log (`There was an error reading the poll results for poll ID ${pollId}.\n` + error);
-    }
-  }
-
-  // Handle freeformCreate
-  // Submitted when a user enters a question into a "Create a freeform response question" card and clicks submit.
-  if (formData.formType == "freeformCreate") {
-    console.log(`DEBUG: Received freeformCreate type.`);
-    // First we'll check if the person that submitted the freeform question also triggered the bot to send it in the first place.
-    if (attachedForm.personId == formData.trigger.person.id) {
-      // Then we'll deleet the "Create a New Freeform Question" message
-      bot.censor(attachedForm.messageId);
-
-      // Anonymous text changes depending on whether the question is anonymous or not
-      console.log(`isAnonymous: ${formData.isAnonymous}`);
-      let anonText = "";
-      let anonFollowupText = "";
-      var anonFlag = 1;
-
-      if (formData.isAnonymous == true) {
-        console.log(`if-else isAnonymous: read TRUE`);
-        anonText = `This response will be anonymous.`;
-        anonFollowupText = `Submissions to your question will be anonymous.`;
-      }
-      else {
-        console.log(`if-else isAnonymous: read FALSE`);
-        anonFlag = 0;
-        anonText = `This response will NOT be anonymous.`;
-        anonFollowupText = `Submissions will not be anonymous.`;
-      }
-
-      // And send a new card with their question:
-      let freeformResponseCard = 
+        // Followed by our actual Adaptive Card template.
+        let pollresults =
         {
-          $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
           type: "AdaptiveCard",
+          $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
           version: "1.2",
-          body: [
-              {
-                  type: "TextBlock",
-                  text: `From **${formData.trigger.person.firstName}**:`,
-                  wrap: true
-              },
-              {
-                  type: "TextBlock",
-                  size: "Medium",
-                  weight: "Bolder",
-                  text: `${formData.freeformSubmission}`,
-                  horizontalAlignment: "Center",
-                  wrap: true,
-                  style: "heading"
-              },
-              {
-                  type: "Input.Text",
-                  id: "freeformResponse",
-                  maxLength: 500,
-                  placeholder: "Enter your response here",
-                  label: `${anonText}\nPlease enter your response below:`,
-                  isMultiline: true,
-              }
-          ],
-          actions: [
-            {
-              type: "Action.Submit",
-              title: "Submit Response",
-              data: {
-                "anonFlag": `${anonFlag}`,
-                "formType": "freeformResponse",
-                "formId": `${formData.formId}`,
-                "endpoint": `${process.env.WEBHOOKURL}/submit`,
-              }
-            }
-          ]
-        }
-      
-      // Send the freeform question into the chat
-      bot.sendCard (
-        freeformResponseCard,
-        "freeformResponseCard"
-      );
-
-      // Send a card to the creator of the freeform question with a freeform question answer retrieval card
-      let freeformFollowupCard = 
-        {
-          type: "AdaptiveCard",
-          $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
-          version: "1.0",
           body: [
             {
               type: "TextBlock",
-              text: `Hey! Your freeform question, "${formData.freeformSubmission}" is currently taking responses.
-                    \nWhen you're ready to see the current submissions, click the button below.
-                    \n${anonFollowupText}`,
+              text: `🎉 Here are the current results for your poll, "${formTitle}":`,
               wrap: true,
               size: "Large",
               weight: "Default",
             },
             {
-              type: "TextBlock",
-              text: `Clicking this button will not end the freeform question.`,
-              wrap: true,
-              size: "Small",
-              weight: "Default",
-              spacing: "Small",
+              type: "Container",
+              style: "emphasis",
+              items: [
+                {
+                  type: "Container",
+                  items: dynamicResults,
+                },
+              ]
             },
           ],
           actions: [
             {
               type: "Action.Submit",
-              title: "View Current Responses",
+              title: "View Updated Results",
+              data: {
+                "isAnonymous": Boolean(isAnonymous),
+                "choiceTitles": formData.choiceTitles,
+                "formTitle": `${formTitle}`,
+                "formType": "pollrequest",
+                "formId": `${pollId}`,
+                "endpoint": `${process.env.WEBHOOKURL}/submit`
+              }
+            }
+          ]
+        }
+
+        // Then we send the response with the current results of the poll!
+        // console.log(`card dump: ${JSON.stringify(pollresults)}`);
+        await bot.sendCard(
+          pollresults,
+          // Error message if applicable.
+          "pollresults"
+        )
+        try {
+          await bot.censor(attachedForm.messageId);
+        } catch (e) {
+          console.log(e);
+        }
+      } catch(error) {
+        console.log (`There was an error reading the poll results for poll ID ${pollId}.\n` + error);
+      }
+      break;
+    }
+    // Handle freeformCreate
+    // Submitted when a user enters a question into a "Create a freeform response question" card and clicks submit.
+    case "freeformCreate": {
+      console.log(`DEBUG: Received freeformCreate type.`);
+      // First we'll check if the person that submitted the freeform question also triggered the bot to send it in the first place.
+      if (attachedForm.personId == formData.trigger.person.id) {
+        // Then we'll delete the "Create a New Freeform Question" message
+        try {
+          await bot.censor(attachedForm.messageId);
+        } catch (e) {
+          console.log(e);
+        }
+  
+        // Anonymous text changes depending on whether the question is anonymous or not
+
+        // MOBILE TRUE/FALSE HANDLING:
+        if (formData.isAnonymous === "false") {
+          formData.isAnonymous = false;
+        }
+
+        console.log(`isAnonymous: ${Boolean(formData.isAnonymous)}`);
+        let anonText = "";
+        let anonFollowupText = "";
+        var anonFlag = 1;
+  
+        if (Boolean(formData.isAnonymous) == true) {
+          console.log(`if-else isAnonymous: read TRUE`);
+          anonText = `This response will be anonymous.`;
+          anonFollowupText = `Submissions to your question will be anonymous.`;
+        }
+        else {
+          console.log(`if-else isAnonymous: read FALSE`);
+          anonFlag = 0;
+          anonText = `This response will NOT be anonymous.`;
+          anonFollowupText = `Submissions will not be anonymous.`;
+        }
+  
+        // And send a new card with their question:
+        let freeformResponseCard = 
+          {
+            $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+            type: "AdaptiveCard",
+            version: "1.2",
+            body: [
+                {
+                    type: "TextBlock",
+                    text: `From **${formData.trigger.person.firstName}**:`,
+                    wrap: true
+                },
+                {
+                    type: "TextBlock",
+                    size: "Medium",
+                    weight: "Bolder",
+                    text: `${formData.freeformSubmission}`,
+                    horizontalAlignment: "Center",
+                    wrap: true,
+                    style: "heading"
+                },
+                {
+                    type: "Input.Text",
+                    id: "freeformResponse",
+                    maxLength: 500,
+                    placeholder: "Enter your response here",
+                    label: `${anonText}\nPlease enter your response below:`,
+                    isMultiline: true,
+                }
+            ],
+            actions: [
+              {
+                type: "Action.Submit",
+                title: "Submit Response",
+                data: {
+                  "anonFlag": `${anonFlag}`,
+                  "formType": "freeformResponse",
+                  "formId": `${formData.formId}`,
+                  "endpoint": `${process.env.WEBHOOKURL}/submit`,
+                }
+              }
+            ]
+          }
+        
+        // Send the freeform question into the chat
+        bot.sendCard (
+          freeformResponseCard,
+          "freeformResponseCard"
+        );
+  
+        // Send a card to the creator of the freeform question with a freeform question answer retrieval card
+        let freeformFollowupCard = 
+          {
+            type: "AdaptiveCard",
+            $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+            version: "1.0",
+            body: [
+              {
+                type: "TextBlock",
+                text: `Hey! Your freeform question, "${formData.freeformSubmission}" is currently taking responses.
+                      \nWhen you're ready to see the current submissions, click the button below.
+                      \n${anonFollowupText}`,
+                wrap: true,
+                size: "Large",
+                weight: "Default",
+              },
+              {
+                type: "TextBlock",
+                text: `Clicking this button will not end the freeform question.`,
+                wrap: true,
+                size: "Small",
+                weight: "Default",
+                spacing: "Small",
+              },
+            ],
+            actions: [
+              {
+                type: "Action.Submit",
+                title: "View Current Responses",
+                data: {
+                  "anonFlag": `${anonFlag}`,
+                  "formType": "freeformRequest",
+                  "formTitle": `${formData.freeformSubmission}`,
+                  "formId": `${formData.formId}`,
+                  "endpoint": `${process.env.WEBHOOKURL}/submit`
+                }
+              }
+            ]
+          }
+  
+          // Then send it their way!
+          bot.dmCard(
+            formData.trigger.person.id, 
+            freeformFollowupCard, 
+            "Freeform Question Followup");
+      }
+      else {
+        bot.dm(attachedForm.personId, "Sorry! This freeform Create card is reserved. If you'd like to start your own freeform response question, use the command 'freeform'.")
+      }
+      break;
+    }
+    
+    // Handle freeformResponse
+    // Submitted when a user types into a freeform question card and submits their answer.
+    case "freeformResponse": {
+      // Log the submission
+      console.log("Handling 'freeformResponse': Freeform Question Response");
+      //bot.say(`${attachedForm.id}, you selected ${selectedOption}! (this is a debug message)`);
+      submitFreeformResponse(formData.formId, attachedForm.personId, formData.freeformResponse);
+      break;
+    }
+
+    // Handle freeformRequest
+    // Submitted when a user clicks the "View Current Responses" button in their follow-up card.
+    case "freeformRequest" : {
+      // More 'concise'ing
+      // formTitle is the string English question from the original poll
+      let formTitle = formData.formTitle;
+      // freeformId is the hex specifier of the original question (and name of the JSON file containing its data)
+      const freeformId = formData.formId;
+
+      var anonFlag = formData.anonFlag;
+
+      // Some logging
+      console.log(`DEBUG: Freeform request made for freeform question ${freeformId}.`);
+
+      // We'll retrieve all of the responses to the submission:
+      let freeformResponses = await getFreeformResponses(freeformId, anonFlag);
+      console.log("DEBUG: Retrieved freeformResponses: " + freeformResponses);
+      let freeformResponsesCardText = buildTextFreeformResponsesAnonymous(freeformResponses);
+
+      let freeformResponsesRequestCard =
+        {
+          type: "AdaptiveCard",
+          $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+          version: "1.2",
+          body: [
+            {
+              type: "TextBlock",
+              text: `📝 Here are the responses for your freeform response question, "${formData.formTitle}":`,
+              wrap: true,
+              size: "Large",
+              weight: "Default",
+            },
+            {
+              type: "Container",
+              items: freeformResponsesCardText,
+            },
+          ],
+          actions: [
+            {
+              type: "Action.Submit",
+              title: "View Updated Submissions",
               data: {
                 "anonFlag": `${anonFlag}`,
                 "formType": "freeformRequest",
-                "formTitle": `${formData.freeformSubmission}`,
+                "formTitle": `${formData.formTitle}`,
                 "formId": `${formData.formId}`,
                 "endpoint": `${process.env.WEBHOOKURL}/submit`
               }
@@ -821,562 +1061,598 @@ framework.on('attachmentAction', async (bot, trigger) => {
           ]
         }
 
-        // Then send it their way!
-        bot.dmCard(
-          formData.trigger.person.id, 
-          freeformFollowupCard, 
-          "Freeform Question Followup");
+      // Delete the previous followup DM
+      try {
+        await bot.censor(attachedForm.messageId)
+      } catch (e) {
+        console.log(e);
+      }
+
+      // Send results
+      bot.sendCard(
+        freeformResponsesRequestCard,
+        // Error message if applicable.
+        "freeformResponsesRequestCard"
+      )
+      break;
     }
-    else {
-      bot.dm(attachedForm.personId, "Sorry! This freeform Create card is reserved. If you'd like to start your own freeform response question, use the command 'freeform'.")
+
+    // Handle pollCreate
+    // Submitted when a user uses @mention poll2 and submits a question and answer for posting.
+    case "pollCreate": {
+      // First we'll check if the person that submitted the freeform question also triggered the bot to send it in the first place.
+      if (attachedForm.personId == formData.trigger.person.id) {
+        console.log(`DEBUG: Received pollCreate type`);
+
+        //console.log(`DEBUG: Poll creates with options isAnonymous: ${formData.isAnonymous}, hasOther: ${formData.hasOther}, isMultiselect: ${formData.isMultiselect}`)
+        //console.log(`DEBUG: Attributes when using Boolean: isAnonymous: ${Boolean(formData.isAnonymous)}, hasOther: ${Boolean(formData.hasOther)}, isMultiselect: ${Boolean(formData.isMultiselect)}`)
+        // FIXING MOBILE TRUE/FALSE HANDLING:
+        // For some reason, from mobile and ONLY mobile devices, card submission booleans are submitted as STRINGS from the Microsoft Adaptive Cards. Here, we fix that to continue with the rest of the code.
+        // If you don't believe me, uncomment the logs above and below this unfortunate next few lines of code.
+        if (formData.isAnonymous === "false") {
+          formData.isAnonymous = false;
+        }
+        if (formData.hasOther === "false") {
+          formData.hasOther = false;
+        }
+        if (formData.isMultiselect === "false") {
+          formData.isMultiselect = false;
+        }
+        //console.log(`DEBUG: Attributes when using Boolean: isAnonymous: ${Boolean(formData.isAnonymous)}, hasOther: ${Boolean(formData.hasOther)}, isMultiselect: ${Boolean(formData.isMultiselect)}`)
+
+      
+        // isMultiselect means users can select multiple answers. This value goes right into the card.
+        const isMultiselect = Boolean(formData.isMultiselect);
+        // hasOther means that the poll will have an 'other' option that has a freeform response in it. We make a new block for this.
+        const hasOther = Boolean(formData.hasOther);
+    
+        let anonText = "";
+        let anonFollowupText = "";
+        // isAnonymous flag handling
+        if (Boolean(formData.isAnonymous) == true) {
+          anonText = `Your choice will be anonymous.`;
+          anonFollowupText = `Submissions to your poll will be anonymous.`;
+        }
+        else {
+          anonText = `The creator of this poll will see your selection.`;
+          anonFollowupText = `Submissions will not be anonymous.`;
+        }
+
+        // Parse the answerBox and questionBox fields of the submission
+        let pollQuestionTitle = formData.questionBox;
+
+        // Here we do a lot with a little to simultaneously split the string by the semicolons, while also doing sanitization.
+
+        // Check if string was accidentally separated by colons:
+        if (formData.answersBox.includes(":")) {
+          // Check if the string does not have any semicolons
+          if (!/;/.test(formData.answersBox)) {
+            // Remind the user to use semicolons and return!
+            bot.say("Psst, use semicolons ';', not colons ':' to separate your answers!");
+            return;
+          }
+        }
+          
+        // First we remove any escape characters 
+        let cleanedAnswersBox = formData.answersBox.replace(/\\/g, '');
+        // Then we remove any adjacent semicolons (i.e ";;;;;;" becomes ";")
+        cleanedAnswersBox = cleanedAnswersBox.replace(/;;+/g, ';');
+        // Then if the first or last characters are semicolons, remove them
+        if (cleanedAnswersBox.slice(-1) === ';') {
+          cleanedAnswersBox = cleanedAnswersBox.slice(0, -1);
+        }
+        if (cleanedAnswersBox.charAt(0) === ';') {
+          cleanedAnswersBox = cleanedAnswersBox.slice(1);
+        }
+        // Then we remove unnecessary whitespace.
+        let pollAnswers = cleanedAnswersBox.split(';').map(word => word.trim()); 
+
+        // Now we'll create the dynamic text for the choices, along with saving the titles for our results card.
+        // choiceTitles will be an array of the names of the options in this poll for parsing later.
+        let choiceTitles = [];
+        // choices will be the block of options within the card's "Input.ChoiceSet" option.
+        let choices = [];
+        for (let i = 0; i < pollAnswers.length; i++) {
+          choiceTitles.push(pollAnswers[i]);
+          let choice = 
+          {
+            title: pollAnswers[i],
+            value: pollAnswers[i],
+          };
+          choices.push(choice);
+        }
+
+        // If the poll contains an Other Option,
+        if (Boolean(hasOther) == true) {
+          // Then create the option
+          let otherOption =
+          {
+            title: "Other", 
+            value: "otherOption"
+          }
+          // Push it to the choice list
+          choices.push(otherOption);
+          // Then make a container with the text box
+        }
+
+        // Then we'll deleet the "Create a New Freeform Question" message
+        try {
+          await bot.censor(attachedForm.messageId);
+        } catch (e) {
+          console.log(e);
+        }
+
+        let bodyBlock = []
+
+        let bodyBlockLabel = {
+          type: "TextBlock",
+          text: `From **${formData.trigger.person.firstName}**:\n ${pollQuestionTitle}`,
+          wrap: true,
+          size: "Medium",
+          weight: "Default",
+        };
+        bodyBlock.push(bodyBlockLabel);
+
+        let bodyBlockChoices = {
+          type: "Input.ChoiceSet",
+          choices: choices,
+          isMultiSelect: isMultiselect,
+          placeholder: "Placeholder text",
+          style: "expanded",
+          id: "selectedOptions",
+        };
+        bodyBlock.push(bodyBlockChoices);
+
+        if (Boolean(hasOther) == true) {
+          let bodyBlockOtherAnswer = {
+            type: "Container",
+            id: "toggleContainer",
+            spacing: "None",
+            items: [
+                {
+                    type: "Input.Text",
+                    placeholder: "Please specify",
+                    spacing: "None",
+                    id: "otherAnswer"
+                }
+            ]
+          };
+          bodyBlock.push(bodyBlockOtherAnswer);
+        }
+        
+        let bodyBlockAnonText = {
+          type: "TextBlock",
+          text: `${anonText}`,
+          wrap: true,
+          size: "Small",
+          weight: "Default",
+          spacing: "Medium",
+        };
+        bodyBlock.push(bodyBlockAnonText);
+
+        // And send a new card with their question:
+        console.log(`DEBUG: POLL CREATE: isMultiselect: ${isMultiselect}, hasOther: ${hasOther}`)
+        let pollCard = 
+          {
+            type: "AdaptiveCard",
+            $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+            version: "1.0",
+            body: bodyBlock,
+            actions: [
+              {
+                type: "Action.Submit",
+                title: "Submit",
+                data: {
+                  "isMultiselect": Boolean(formData.isMultiselect),
+                  "hasOther": Boolean(formData.hasOther),
+                  "isAnonymous": Boolean(formData.isAnonymous),
+                  "choiceTitles": choiceTitles,
+                  "formType": "pollResponse",
+                  "formId": `${formData.formId}`,
+                  "endpoint": `${process.env.WEBHOOKURL}/submit`
+                }
+              }
+            ]
+          };
+
+          console.log(`Sending card...`)
+          // Send the new poll into the chat
+          await bot.sendCard (
+            pollCard,
+            "New Poll"
+          );
+
+          // This card will contain the sensitive details of the new poll and be DMd to the creator for follow-up.
+        let pollfollowupcard = 
+          {
+            type: "AdaptiveCard",
+            $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+            version: "1.0",
+            body: [
+              {
+                type: "TextBlock",
+                text: `Hi! Your poll "${formData.questionBox}" is currently running. When you're ready to see results, click the button below.\n${anonFollowupText}`,
+                wrap: true,
+                size: "Large",
+                weight: "Default",
+              },
+              {
+                type: "TextBlock",
+                text: `Clicking this button will not end the current poll.`,
+                wrap: true,
+                size: "Small",
+                weight: "Default",
+                spacing: "Small",
+              },
+            ],
+            actions: [
+              {
+                type: "Action.Submit",
+                title: "View Current Results",
+                data: {
+                  "hasOther": Boolean(formData.hasOther),
+                  "isMultiselect": Boolean(formData.isMultiselect),
+                  "isAnonymous": Boolean(formData.isAnonymous),
+                  "choiceTitles": choiceTitles,
+                  "formTitle": `${formData.questionBox}`,
+                  "formType": "pollrequest",
+                  "formId": `${formData.formId}`,
+                  "endpoint": `${process.env.WEBHOOKURL}/submit`
+                }
+              }
+            ]
+          }
+
+        try {
+          await bot.dmCard(
+            formData.trigger.person.id, 
+            pollfollowupcard, 
+            "Poll Creation Followup");
+        } catch (error) {
+          console.log(`Error DMing the card to ${formData.trigger.person.id}:\n${error}`);
+        }
+
+      }
+      else {
+        bot.dm(attachedForm.personId, "Sorry! This poll create card is reserved. If you'd like to start your own freeform response question, use the command 'poll'.")
+      } 
+      break;
     }
 
-  }
-
-  // Handle freeformResponse
-  // Submitted when a user types into a freeform question card and submits their answer.
-  if (formData.formType == "freeformResponse") {
-    // Log the submission
-    console.log("Handling 'freeformResponse': Freeform Question Response");
-    //bot.say(`${attachedForm.id}, you selected ${selectedOption}! (this is a debug message)`);
-    submitFreeformResponse(formData.formId, attachedForm.personId, formData.freeformResponse);
-  }
-
-  // Handle freeformRequest
-  // Submitted when a user clicks the "View Current Responses" button in their follow-up card.
-  if (formData.formType == "freeformRequest") {
-    // More 'concise'ing
-    // formTitle is the string English question from the original poll
-    let formTitle = formData.formTitle;
-    // freeformId is the hex specifier of the original question (and name of the JSON file containing its data)
-    const freeformId = formData.formId;
-
-    var anonFlag = formData.anonFlag;
-
-    // Some logging
-    console.log(`DEBUG: Freeform request made for freeform question ${freeformId}.`);
-
-    // We'll retrieve all of the responses to the submission:
-    let freeformResponses = await getFreeformResponses(freeformId, anonFlag);
-    console.log("DEBUG: Retrieved freeformResponses: " + freeformResponses);
-    let freeformResponsesCardText = buildTextFreeformResponsesAnonymous(freeformResponses);
-
-    let freeformResponsesRequestCard =
+    // Handle a gas create
+    // Submitted when a user clicks 'send' on a Gas creation form
+    case "newGasMessage": {
+      console.log(`DEBUG: Handling new gas message from ${formData.trigger.person.userName} to "${formData.gasRecipient}"`);
+      // Gas ID
+      const gasId = formData.formId;
+  
+      // Email of the sender
+      const gasSender = formData.trigger.person.userName;
+  
+      // Email of the recipient
+      const gasReceiver = formData.gasRecipient;
+  
+      // Initial Gas message
+      const gasMessage = formData.gasMessage;
+  
+      // Delete the gas creation card
+      try {
+        await bot.censor(attachedForm.messageId);
+      } catch (e) {
+        console.log(e);
+      }
+  
+  
+      let youGotGasCard = 
       {
         type: "AdaptiveCard",
         $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
         version: "1.2",
         body: [
-          {
-            type: "TextBlock",
-            text: `📝 Here are the responses for your freeform response question, "${formData.formTitle}":`,
-            wrap: true,
-            size: "Large",
-            weight: "Default",
-          },
-          {
-            type: "Container",
-            items: freeformResponsesCardText,
-          },
+            {
+                type: "TextBlock",
+                text: "You've got Gas! 🔥",
+                wrap: true,
+                size: "Large",
+                weight: "Bolder"
+            },
+            {
+                type: "TextBlock",
+                text: "Someone has decided to anonymously gas you up!\nHere's what they said.",
+                wrap: true,
+                size: "Small",
+                spacing: "Small"
+            },
+            {
+                type: "Container",
+                items: [
+                    {
+                        "type": "TextBlock",
+                        "text": `${gasMessage}`,
+                        "wrap": true,
+                        "size": "Medium",
+                        "spacing": "None"
+                    }
+                ],
+                spacing: "Medium"
+            },
+            {
+              type: "TextBlock",
+              text: "You can click this button to reply to this person.",
+              wrap: true,
+              size: "Small",
+              spacing: "Medium"
+            },
         ],
         actions: [
           {
             type: "Action.Submit",
-            title: "View Updated Submissions",
+            title: "Reply to this gas",
             data: {
-              "anonFlag": `${anonFlag}`,
-              "formType": "freeformRequest",
-              "formTitle": `${formData.formTitle}`,
+              "originalTriggerPerson": `${formData.trigger.person.userName}`,
+              "originalGas": `${gasMessage}`,
+              "formType": "gasReplyRequest",
               "formId": `${formData.formId}`,
               "endpoint": `${process.env.WEBHOOKURL}/submit`
             }
           }
         ]
+      };
+  
+      // if the recipient is the bot
+      if (formData.gasRecipient.toLowerCase() == "cxhighfivebot@webex.bot") {
+        bot.say ("Thanks for the gas!");
+        return;
       }
-
-    // Delete the previous followup DM
-    bot.censor(attachedForm.messageId)
-    // Send results
-    bot.sendCard(
-      freeformResponsesRequestCard,
-      // Error message if applicable.
-      "freeformResponsesRequestCard"
-    )
-  }
-
-  // Handle pollCreate
-  // Submitted when a user uses @mention poll2 and submits a question and answer for posting.
-  if (formData.formType == "pollCreate") {
-    console.log(`DEBUG: Received pollCreate type.\n Trigger data:` + formData.trigger.text);
-
-    let anonFlag = 1;
-    let anonText = "";
-    let anonFollowupText = "";
-    // isAnonymous flag handling
-    if (formData.isAnonymous == true) {
-      anonText = `Your choice will be anonymous.`;
-      anonFollowupText = `Submissions to your poll will be anonymous.`;
-    }
-    else {
-      anonFlag = 0;
-      anonText = `The creator of this poll will see your selection.`;
-      anonFollowupText = `Submissions will not be anonymous.`;
-    }
-
-    // First we'll check if the person that submitted the freeform question also triggered the bot to send it in the first place.
-    if (attachedForm.personId == formData.trigger.person.id) {
-      // Parse the answerBox and questionBox fields of the submission
-      let pollQuestionTitle = formData.questionBox;
-
-      // Here we do a lot with a little to simultaneously split the string by the semicolons, while also doing sanitization.
-
-      let cleanedAnswersBox = formData.answersBox.replace(/\\/g, '');
-      cleanedAnswersBox = cleanedAnswersBox.replace(/;;+/g, ';');
-      if (cleanedAnswersBox.slice(-1) === ';') {
-        cleanedAnswersBox = cleanedAnswersBox.slice(0, -1);
-      }
-      if (cleanedAnswersBox.charAt(0) === ';') {
-        cleanedAnswersBox = cleanedAnswersBox.slice(1);
-      }
-
-      let pollAnswers = cleanedAnswersBox.split(';').map(word => word.trim()); 
-
-      // Then we'll create the dynamic text for the choices, along with saving the titles for our results card.
-      let choiceTitles = [];
-      let choices = [];
-      for (let i = 0; i < pollAnswers.length; i++) {
-        choiceTitles.push(pollAnswers[i]);
-        let choice = 
-        {
-          title: pollAnswers[i],
-          value: pollAnswers[i],
-        };
-        choices.push(choice);
-      } 
-
-      // Then we'll deleet the "Create a New Freeform Question" message
-      bot.censor(attachedForm.messageId);
-
-      // And send a new card with their question:
-      let pollCard = 
-        {
-          type: "AdaptiveCard",
-          $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
-          version: "1.0",
-          body: [
-            {
-              type: "TextBlock",
-              text: `From **${formData.trigger.person.firstName}**:\n ${pollQuestionTitle}`,
-              wrap: true,
-              size: "Medium",
-              weight: "Default",
-            },
-            {
-              type: "Input.ChoiceSet",
-              choices: choices,
-              placeholder: "Placeholder text",
-              style: "expanded",
-              id: "polloption",
-            },
-            {
-              type: "TextBlock",
-              text: `${anonText}`,
-              wrap: true,
-              size: "Small",
-              weight: "Default",
-              spacing: "Medium",
-            },
-          ],
-          actions: [
-            {
-              type: "Action.Submit",
-              title: "Submit",
-              data: {
-                "isAnonymous": formData.isAnonymous,
-                "choiceTitles": choiceTitles,
-                "formType": "pollResponse",
-                "formId": `${formData.formId}`,
-                "endpoint": `${process.env.WEBHOOKURL}/submit`
-              }
-            }
-          ]
-        };
-
-        // Send the new pollinto the chat
-        bot.sendCard (
-          pollCard,
-          "New Poll"
-        );
-
-        // This card will contain the sensitive details of the new poll and be DMd to the creator for follow-up.
-      let pollfollowupcard = 
-        {
-          type: "AdaptiveCard",
-          $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
-          version: "1.0",
-          body: [
-            {
-              type: "TextBlock",
-              text: `Hi! Your poll "${formData.questionBox}" is currently running. When you're ready to see results, click the button below.\n${anonFollowupText}`,
-              wrap: true,
-              size: "Large",
-              weight: "Default",
-            },
-            {
-              type: "TextBlock",
-              text: `Clicking this button will not end the current poll.`,
-              wrap: true,
-              size: "Small",
-              weight: "Default",
-              spacing: "Small",
-            },
-          ],
-          actions: [
-            {
-              type: "Action.Submit",
-              title: "View Current Results",
-              data: {
-                "isAnonymous": formData.isAnonymous,
-                "choiceTitles": choiceTitles,
-                "formTitle": `${formData.questionBox}`,
-                "formType": "pollrequest",
-                "formId": `${formData.formId}`,
-                "endpoint": `${process.env.WEBHOOKURL}/submit`
-              }
-            }
-          ]
-        }
-
+  
+      // Try to send the message to the reciever.
       try {
-        bot.dmCard(
-          formData.trigger.person.id, 
-          pollfollowupcard, 
-          "Poll Creation Followup");
-      } catch (error) {
-        console.log(`Error DMing the card to ${formData.trigger.person.id}:\n${error}`);
+        await bot.dmCard(formData.gasRecipient, youGotGasCard, "You got Gas!");
+      } catch(error) {
+        // If there's an error sending the card to the recipient, then let the sender know.
+        bot.say(`Hmm. There was an error sending your gas.\nPlease ensure you typed in the right email address and try again. Here was your message: \n\nTo ${formData.gasRecipient}:\n${gasMessage}`);
+        return;
       }
-
-    }
-    else {
-      bot.dm(attachedForm.personId, "Sorry! This poll create card is reserved. If you'd like to start your own freeform response question, use the command 'poll'.")
-    } 
-  }
-
-  // Handle a gas create
-  // Submitted when a user clicks 'send' on a Gas creation form
-  if (formData.formType == "newGasMessage") {
-    console.log(`DEBUG: Handling new gas message from ${formData.trigger.person.userName} to "${formData.gasRecipient}"`);
-    // Gas ID
-    const gasId = formData.formId;
-
-    // Email of the sender
-    const gasSender = formData.trigger.person.userName;
-
-    // Email of the recipient
-    const gasReceiver = formData.gasRecipient;
-
-    // Initial Gas message
-    const gasMessage = formData.gasMessage;
-
-    // Delete the gas creation card
-    bot.censor(attachedForm.messageId);
-
-    let youGotGasCard = 
-    {
-      type: "AdaptiveCard",
-      $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
-      version: "1.2",
-      body: [
-          {
+  
+      let gasSentConfirmationCard = 
+      {
+        type: "AdaptiveCard",
+        $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+        version: "1.2",
+        body: [
+            {
+                type: "TextBlock",
+                text: "Gas sent!🔥",
+                wrap: true,
+                size: "Large",
+                weight: "Bolder"
+            },
+            {
+                type: "TextBlock",
+                text: "Your gas recipient has successfully received their gas. If they reply, you'll receive a message letting you know.",
+                wrap: true,
+                size: "Medium"
+            },
+            {
               type: "TextBlock",
-              text: "You've got Gas! 🔥",
+              text: "Here's what you sent:",
               wrap: true,
-              size: "Large",
-              weight: "Bolder"
-          },
-          {
-              type: "TextBlock",
-              text: "Someone has decided to anonymously gas you up!\nHere's what they said.",
-              wrap: true,
-              size: "Small",
-              spacing: "Small"
-          },
-          {
+              size: "Small"
+            },
+            {
               type: "Container",
               items: [
                   {
                       "type": "TextBlock",
                       "text": `${gasMessage}`,
                       "wrap": true,
-                      "size": "Medium",
+                      "size": "Small",
                       "spacing": "None"
                   }
               ],
-              spacing: "Medium"
-          },
+              spacing: "Small"
+            },
+        ],
+      }
+  
+      // Send confirmation card
+      bot.sendCard(gasSentConfirmationCard, "Gas sent.");
+      break;
+    }
+
+    // Handle gas reply REQUEST
+    // Submitted when a user clicks "Reply" after receiving a gas.
+    case "gasReplyRequest": {
+      // Original gas message
+      const originalGas = formData.originalGas;
+
+      // Original sender
+      const originalTriggerPerson = formData.originalTriggerPerson;
+
+      try {
+        await bot.censor(attachedForm.messageId);
+      } catch (e) {
+        console.log(e);
+      }
+
+      let gasReplyRequestCard =
           {
-            type: "TextBlock",
-            text: "You can click this button to reply to this person.",
-            wrap: true,
-            size: "Small",
-            spacing: "Medium"
-          },
-      ],
-      actions: [
-        {
-          type: "Action.Submit",
-          title: "Reply to this gas",
-          data: {
-            "originalTriggerPerson": `${formData.trigger.person.userName}`,
-            "originalGas": `${gasMessage}`,
-            "formType": "gasReplyRequest",
-            "formId": `${formData.formId}`,
-            "endpoint": `${process.env.WEBHOOKURL}/submit`
+            "type": "AdaptiveCard",
+            "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+            "version": "1.3",
+            "body": [
+                {
+                  "type": "TextBlock",
+                  "text": "Reply to your Gas! 🔥",
+                  "wrap": true,
+                  "size": "Large",
+                  "weight": "Bolder",
+                },
+                {
+                  "type": "TextBlock",
+                  "text": "The original gas:",
+                  "spacing": "Medium",
+                  "size": "Small"
+                },
+                {
+                  type: "Container",
+                  items: [
+                      {
+                          "type": "TextBlock",
+                          "text": `${originalGas}`,
+                          "wrap": true,
+                          "size": "Small",
+                          "spacing": "Small"
+                      }
+                  ],
+                  spacing: "Small"
+                },
+                {
+                  "type": "Input.Text",
+                  "label": "Enter your reply here:",
+                  "placeholder": "Thank you, stranger!",
+                  "spacing": "Medium",
+                  "isRequired": true,
+                  "id": "gasReplyMessage",
+                }
+            ],
+            actions: [
+              {
+                spacing: "Large",
+                type: "Action.Submit",
+                title: "Reply 🔥",
+                data: {
+                  "originalGas": `${originalGas}`,
+                  "originalTriggerPerson": originalTriggerPerson,
+                  "formType": "gasReply",
+                  "endpoint": `${process.env.WEBHOOKURL}/submit`,
+                }
+              }
+            ]
           }
-        }
-      ]
-    };
 
-    // if the recipient is the bot
-    if (formData.gasRecipient.toLowerCase() == "cxhighfivebot@webex.bot") {
-      bot.say ("Thanks for the gas!");
-      return;
+      bot.sendCard(gasReplyRequestCard, "Reply to your gas!");
+      break;
     }
 
-    // Try to send the message to the reciever.
-    try {
-      await bot.dmCard(formData.gasRecipient, youGotGasCard, "You got Gas!");
-    } catch(error) {
-      // If there's an error sending the card to the recipient, then let the sender know.
-      bot.say(`Hmm. There was an error sending your gas.\nPlease ensure you typed in the right email address and try again. Here was your message: \n\nTo ${formData.gasRecipient}:\n${gasMessage}`);
-      return;
-    }
+    // Handle gasReply
+    // Submitted when a user clicks 'send' on a reply to a gas.
+    case "gasReply": {
+      // Original gas message
+      const originalGas = formData.originalGas;
 
-    let gasSentConfirmationCard = 
-    {
-      type: "AdaptiveCard",
-      $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
-      version: "1.2",
-      body: [
+      // Original sender
+      const originalTriggerPerson = formData.originalTriggerPerson;
+
+      const gasReply = formData.gasReplyMessage;
+
+      // get name
+      const replyName = await getFirstName(attachedForm.personId);
+
+      console.log(`DEBUG: getting reply name after call then: ${replyName}`);
+
+      try {
+        await bot.censor(attachedForm.messageId);
+      } catch (e) {
+        console.log(e);
+      }
+
+      let gasReplyCard =
           {
-              type: "TextBlock",
-              text: "Gas sent!🔥",
-              wrap: true,
-              size: "Large",
-              weight: "Bolder"
-          },
-          {
-              type: "TextBlock",
-              text: "Your gas recipient has successfully received their gas. If they reply, you'll receive a message letting you know.",
-              wrap: true,
-              size: "Medium"
-          },
-          {
-            type: "TextBlock",
-            text: "Here's what you sent:",
-            wrap: true,
-            size: "Small"
-          },
-          {
-            type: "Container",
-            items: [
+            "type": "AdaptiveCard",
+            "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+            "version": "1.3",
+            "body": [
                 {
-                    "type": "TextBlock",
-                    "text": `${gasMessage}`,
-                    "wrap": true,
-                    "size": "Small",
-                    "spacing": "None"
+                  "type": "TextBlock",
+                  "text": "You've received a reply to your gas! 🔥",
+                  "wrap": true,
+                  "size": "Large",
+                  "weight": "Bolder",
+                  "spacing": "Small",
+                },
+                {
+                  "type": "TextBlock",
+                  "text": `Here's what ${replyName} said:`,
+                  "wrap": true,
+                  "size": "Medium",
+                  "spacing": "Medium"
+                },
+                {
+                  type: "Container",
+                  items: [
+                      {
+                          "type": "TextBlock",
+                          "text": `${gasReply}`,
+                          "wrap": true,
+                          "size": "Medium",
+                          "spacing": "None",
+                      }
+                  ]
+                },
+                {
+                  "type": "TextBlock",
+                  "text": "The original gas:",
+                  "spacing": "Medium",
+                  "size": "Small"
+                },
+                {
+                  type: "Container",
+                  items: [
+                      {
+                          "type": "TextBlock",
+                          "text": `${originalGas}`,
+                          "wrap": true,
+                          "size": "Small",
+                          "spacing": "None"
+                      }
+                  ],
+                  spacing: "Small"
                 }
-            ],
-            spacing: "Small"
-          },
-      ],
-    }
+            ]
+          }
+      bot.dmCard(originalTriggerPerson, gasReplyCard, "Your gas received a reply!");
 
-    // Send confirmation card
-    bot.sendCard(gasSentConfirmationCard, "Gas sent.");
-  }
-
-  // Handle gas reply REQUEST
-  // Submitted when a user clicks "Reply" after receiving a gas.
-  if (formData.formType == "gasReplyRequest") {
-    // Original gas message
-    const originalGas = formData.originalGas;
-
-    // Original sender
-    const originalTriggerPerson = formData.originalTriggerPerson;
-
-    bot.censor(attachedForm.messageId);
-
-    let gasReplyRequestCard =
-        {
-          "type": "AdaptiveCard",
-          "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
-          "version": "1.3",
-          "body": [
-              {
-                "type": "TextBlock",
-                "text": "Reply to your Gas! 🔥",
-                "wrap": true,
-                "size": "Large",
-                "weight": "Bolder",
-              },
-              {
-                "type": "TextBlock",
-                "text": "The original gas:",
-                "spacing": "Medium",
-                "size": "Small"
-              },
-              {
-                type: "Container",
-                items: [
-                    {
-                        "type": "TextBlock",
-                        "text": `${originalGas}`,
-                        "wrap": true,
-                        "size": "Small",
-                        "spacing": "Small"
-                    }
-                ],
-                spacing: "Small"
-              },
-              {
-                "type": "Input.Text",
-                "label": "Enter your reply here:",
-                "placeholder": "Thank you, stranger!",
-                "spacing": "Medium",
-                "isRequired": true,
-                "id": "gasReplyMessage",
-              }
-          ],
-          actions: [
+      let gasReplyConfirmationCard = 
+      {
+        type: "AdaptiveCard",
+        $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+        version: "1.2",
+        body: [
             {
-              spacing: "Large",
-              type: "Action.Submit",
-              title: "Reply 🔥",
-              data: {
-                "originalGas": `${originalGas}`,
-                "originalTriggerPerson": originalTriggerPerson,
-                "formType": "gasReply",
-                "endpoint": `${process.env.WEBHOOKURL}/submit`,
-              }
-            }
-          ]
-        }
-
-    bot.sendCard(gasReplyRequestCard, "Reply to your gas!");
-  }
-
-  // Handle gasReply
-  // Submitted when a user clicks 'send' on a reply to a gas.
-  if (formData.formType == "gasReply") {
-    // Original gas message
-    const originalGas = formData.originalGas;
-
-    // Original sender
-    const originalTriggerPerson = formData.originalTriggerPerson;
-
-    const gasReply = formData.gasReplyMessage;
-
-    // get name
-    const replyName = await getFirstName(attachedForm.personId);
-
-    console.log(`DEBUG: getting reply name after call then: ${replyName}`);
-
-    bot.censor(attachedForm.messageId);
-
-    let gasReplyCard =
-        {
-          "type": "AdaptiveCard",
-          "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
-          "version": "1.3",
-          "body": [
-              {
-                "type": "TextBlock",
-                "text": "You've received a reply to your gas! 🔥",
-                "wrap": true,
-                "size": "Large",
-                "weight": "Bolder",
-                "spacing": "Small",
-              },
-              {
-                "type": "TextBlock",
-                "text": `Here's what ${replyName} said:`,
-                "wrap": true,
-                "size": "Medium",
-                "spacing": "Medium"
-              },
-              {
-                type: "Container",
-                items: [
-                    {
-                        "type": "TextBlock",
-                        "text": `${gasReply}`,
-                        "wrap": true,
-                        "size": "Medium",
-                        "spacing": "None",
-                    }
-                ]
-              },
-              {
-                "type": "TextBlock",
-                "text": "The original gas:",
-                "spacing": "Medium",
-                "size": "Small"
-              },
-              {
-                type: "Container",
-                items: [
-                    {
-                        "type": "TextBlock",
-                        "text": `${originalGas}`,
-                        "wrap": true,
-                        "size": "Small",
-                        "spacing": "None"
-                    }
-                ],
-                spacing: "Small"
-              }
-          ]
-        }
-    bot.dmCard(originalTriggerPerson, gasReplyCard, "Your gas received a reply!");
-
-    let gasReplyConfirmationCard = 
-    {
-      type: "AdaptiveCard",
-      $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
-      version: "1.2",
-      body: [
-          {
+                type: "TextBlock",
+                text: "Gas reply sent!🔥",
+                wrap: true,
+                size: "Large",
+                weight: "Bolder"
+            },
+            {
               type: "TextBlock",
-              text: "Gas reply sent!🔥",
+              text: `Here's the original gas:`,
               wrap: true,
-              size: "Large",
-              weight: "Bolder"
-          },
-          {
-            type: "TextBlock",
-            text: `Here's the original gas:`,
-            wrap: true,
-            size: "Small"
-          },
-          {
-            type: "Container",
-            items: [
-                {
-                    "type": "TextBlock",
-                    "text": `${originalGas}`,
-                    "wrap": true,
-                    "size": "Small",
-                    "spacing": "Small"
-                }
-            ],
-            spacing: "Small"
-          },
-      ],
+              size: "Small"
+            },
+            {
+              type: "Container",
+              items: [
+                  {
+                      "type": "TextBlock",
+                      "text": `${originalGas}`,
+                      "wrap": true,
+                      "size": "Small",
+                      "spacing": "Small"
+                  }
+              ],
+              spacing: "Small"
+            },
+        ],
+      }
+      bot.sendCard(gasReplyConfirmationCard, "Gas Reply Confirmation");
+      break;
     }
-    bot.sendCard(gasReplyConfirmationCard, "Gas Reply Confirmation");
   }
+
+  // End switch cases
 });
 
 /* End attachmentAction handling, begin
@@ -1658,54 +1934,81 @@ function buildTextFreeformResponsesAnonymous (freeformResponses) {
   return freeformResponsesCardText;
 }
 
-// This function will find all of the data points in a specific JSON specified by its pollId, and fetch all of the choices made by each user.
-async function getPollResults(pollId, isAnonymous) {
+// This function will get all of the data from the poll results, organize them into a neat object array, and return that array to the pollRequest handling.
+async function getPollResultsCard(pollId, choiceTitles) {
+  const submissionPath = `./submissions/${pollId}.json`;
 
-  // Find the file
-  const filePath = `./submissions/${pollId}.json`;
-
-  try {
-    // Read the contents of  the JSON and parse it into JavaScript object
-    const fileContents = fs.readFileSync(filePath, 'utf-8');
-    const pollData = JSON.parse(fileContents);
-    const results = [];
-
-    // Create object to store selectors by option, with each option storing a score count and a string array of the peopleIds that selected it
-    const selectorsByOption = {};
-    for (const [personId, selectedOption] of Object.entries(pollData)) {
-      if (!selectorsByOption[selectedOption]) {
-        selectorsByOption[selectedOption] = {
-          selectors: [],
-          score: 0,
-        };
-      }
-      selectorsByOption[selectedOption].selectors.push(personId);
-      selectorsByOption[selectedOption].score++;
-    }
-
-    // Then, for each option, resolve personId to their name and create object for result.
-    for (const [selectedOption, selectors] of Object.entries(selectorsByOption)) {
-      const selectorNames = await Promise.all(selectors.selectors.map(async (personId) => {
-        const personDetails = await getPersonDetails(personId);
-        console.log(`Resolved personId ${personId} to firstName ${personDetails.firstName}`);
-        return personDetails.firstName;
-      }));
-      console.log(`Selectors for ${selectedOption}: ${selectorNames.join(', ')}`);
-      results.push({
-        selectedOption: selectedOption,
-        selectors: selectorNames,
-        score: selectors.score,
-      });
-    }
-
-    return results;
-  } catch (error) {
-    throw error;
+  // Check if submission file exists, if not, throw an error
+  if (!fs.existsSync(submissionPath)) {
+    throw new Error(`Submission file for poll ${pollId} does not exist.`);
   }
+
+  // Initialize choiceStats object array
+  let choiceStats = {};
+  for (const choice of choiceTitles) {
+    choiceStats[choice] = {
+      count: 0,
+      whoChose: []
+    };
+  }
+
+  // Initialize otherAnswerArray object array
+  let otherAnswerArray = {};
+
+  // Loop through every submission in the submission file
+  const submissions = JSON.parse(fs.readFileSync(submissionPath));
+  for (const personId in submissions) {
+    const selectedOptions = submissions[personId].selectedOptions;
+    const choseOther = submissions[personId].choseOther;
+    const otherAnswer = submissions[personId].otherAnswer;
+    const selectorName = await getFirstName(personId);
+
+    // Loop through every selected option in person's submission
+    for (const selectedOption of selectedOptions) {
+      if (choiceStats[selectedOption]) {
+        choiceStats[selectedOption].count++;
+
+        if (!choiceStats[selectedOption].whoChose.includes(selectorName)) {
+          choiceStats[selectedOption].whoChose.push(selectorName);
+        }
+
+        // Remove choice from choiceTitles array
+        const index = choiceTitles.indexOf(selectedOption);
+        if (index > -1) {
+          choiceTitles.splice(index, 1);
+        }
+      }
+    }
+
+    // Handle 'choseOther'
+    if (choseOther) {
+      otherAnswerArray[selectorName] = otherAnswer;
+    }
+  }
+
+  // Log objects to console
+  console.log("choiceTitles:", choiceTitles);
+  console.log("choiceStats:", choiceStats);
+  console.log("otherAnswerArray:", otherAnswerArray);
+
+  // Return object containing choiceTitles, choiceStats, and otherAnswerArray
+  return {
+    choiceTitles: choiceTitles,
+    choiceStats: choiceStats,
+    otherAnswerArray: otherAnswerArray
+  };
 }
 
 // submitPollResponse will take a poll response and put it into a file associated with its pollId.
-function submitPollResponse(pollId, personId, selectedOption) {
+function submitPollResponse(pollId, personId, selectedOption, hasOther, isMultiselect, questionBox) {
+  console.log(`DEBUG: submitPollResponse received poll submission. Attempting to save these attributes:
+  \npollId: ${pollId}
+  \npersonId: ${personId}
+  \nselectedOption: ${selectedOption}
+  \nhasOther: ${hasOther}
+  \nisMultiselect: ${isMultiselect}
+  \nquestionBox: ${questionBox}`);
+
   const submissionPath = `./submissions/${pollId}.json`;
 
   let submissions = {};
@@ -1715,8 +2018,28 @@ function submitPollResponse(pollId, personId, selectedOption) {
     submissions = JSON.parse(fs.readFileSync(submissionPath));
   }
 
-  // Update person's selected option or add new person's selection
-  submissions[personId] = selectedOption;
+  // Create person's submission object
+  let personSubmission = {
+    choseOther: false,
+    selectedOptions: [],
+    otherAnswer: ""
+  };
+
+  // Update person's submission object
+  if (hasOther && selectedOption.includes("otherOption")) {
+    personSubmission.choseOther = true;
+    selectedOption = selectedOption.replace("otherOption", "").trim();
+    personSubmission.otherAnswer = questionBox;
+  }
+
+  if (isMultiselect) {
+    personSubmission.selectedOptions = selectedOption.split(",").filter(Boolean);
+  } else {
+    personSubmission.selectedOptions = [selectedOption];
+  }
+
+  // Replace existing submission if person has submitted before
+  submissions[personId] = personSubmission;
 
   // Write updated submission to file
   fs.writeFileSync(submissionPath, JSON.stringify(submissions));
