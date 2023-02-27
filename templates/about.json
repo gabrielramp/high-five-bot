@@ -1,0 +1,109 @@
+{
+    "type": "AdaptiveCard",
+    "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+    "version": "1.2",
+    "body": [
+        {
+            "type": "Container",
+            "style": "emphasis",
+            "items": [
+                {
+                    "type": "RichTextBlock",
+                    "inlines": [
+                        {
+                            "type": "TextRun",
+                            "text": "/* \n* made by ",
+                            "fontType": "Monospace",
+                            "color": "Good",
+                            "weight": "Bolder"
+                        },
+                        {
+                            "type": "TextRun",
+                            "text": "Gabe ",
+                            "fontType": "Monospace",
+                            "color": "warning",
+                            "weight": "Bolder"
+                        },
+                        {
+                            "type": "TextRun",
+                            "text": "with ❤️",
+                            "fontType": "Monospace",
+                            "color": "Good",
+                            "weight": "Bolder"
+                        }
+                    ]
+                },
+                {
+                    "type": "TextBlock",
+                    "spacing": "None",
+                    "color": "Good",
+                    "text": " * [https://www.youtube.com/watch?v=9JnGuLUvE4A](https://www.youtube.com/watch?v=9JnGuLUvE4A)",
+                    "fontType": "Monospace",
+                    "weight": "Bolder"
+                },
+                {
+                    "type": "RichTextBlock",
+                    "spacing": "None",
+                    "inlines": [
+                        {
+                            "type": "TextRun",
+                            "text": "* special thanks to ",
+                            "fontType": "Monospace",
+                            "color": "Good",
+                            "weight": "Bolder"
+                        },
+                        {
+                            "type": "TextRun",
+                            "text": "Brad",
+                            "fontType": "Monospace",
+                            "color": "attention",
+                            "weight": "Bolder"
+                        },
+                        {
+                            "type": "TextRun",
+                            "text": ", ",
+                            "fontType": "Monospace",
+                            "color": "Good",
+                            "weight": "Bolder"
+                        },
+                        {
+                            "type": "TextRun",
+                            "text": "Max",
+                            "fontType": "Monospace",
+                            "color": "attention",
+                            "weight": "Bolder"
+                        },
+                        {
+                            "type": "TextRun",
+                            "text": ", and ",
+                            "fontType": "Monospace",
+                            "color": "Good",
+                            "weight": "Bolder"
+                        },
+                        {
+                            "type": "TextRun",
+                            "text": "Julianna\n",
+                            "fontType": "Monospace",
+                            "color": "attention",
+                            "weight": "Bolder"
+                        },                        
+                        {
+                            "type": "TextRun",
+                            "text": "* for helping break the bot :)\n*/",
+                            "fontType": "Monospace",
+                            "color": "Good",
+                            "weight": "Bolder"
+                        }
+                    ]
+                },
+                {
+                    "type": "TextBlock",
+                    "text": "\n// Github: [gabrielramp/high-five-bot](https://github.com/gabrielramp/high-five-bot)",
+                    "fontType": "Monospace",
+                    "color": "Good",
+                    "weight": "Bolder"
+                }
+            ]
+        }
+    ]
+  }
