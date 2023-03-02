@@ -80,66 +80,37 @@ framework.on("Initialized, coming online...", () => {
 *
 */                     
 
-let dummycard = 
-{
-  type: "AdaptiveCard",
-  $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
-  version: "1.0",
-  body: [
-    {
-      type: "TextBlock",
-      text: `From **Gabe**:\n Sample Poll`,
-      wrap: "true",
-      size: "Medium",
-      weight: "Default",
-    },
-    {
-      type: "Input.ChoiceSet",
-      choices: [
-        {
-            title: "Option 1",
-            value: "Option 1"
-        },
-        {
-            title: "Option 2",
-            value: "Option 2"
-        },
-        {
-          title: "Other",
-          value: "Other"
+framework.hears (
+  "devtest",
+  async (bot, trigger) => {
+    console.log(`${JSON.stringify(bot.room, undefined, 2)}`);
+    console.log(`${JSON.stringify(bot.membership, undefined, 2)}`);
+    console.log(`${JSON.stringify(bot.webex, undefined, 2)}`);
+    bot.webex.memberships.list({ roomId: bot.room.id })
+    .then(async (memberships) => {
+      console.log(`${JSON.stringify(memberships, undefined, 2)}`);
+      let allIds = [];
+        for (const member of memberships.items) {
+          allIds.push(member.personId)
         }
-    ],
-      isMultiselect: "true",
-      style: "expanded",
-      id: "selectedOptions",
-    },
-    {
-      type: "Input.Text",
-      placeholder: "Please specify",
-      spacing: "None"
-    },
-    {
-      type: "TextBlock",
-      text: `Your choices will be anonymous.`,
-      wrap: "true",
-      size: "Small",
-      weight: "Default",
-      spacing: "Medium",
-    },
-  ],
-  actions: [
-    {
-      type: "Action.Submit",
-      title: "Submit",
-      data: {
-        "formType": "pollResponse",
-        "formId": `test`,
-        "endpoint": `test`
-      }
-    }
-  ]
-};
+      console.log(`allIds: ${allIds}`);
+    });
 
+  },
+  0
+)
+
+// 'bulletin' command
+const bulletin = require('./bulletin.js');
+framework.hears (
+  "bulletin",
+  async (bot, trigger) => {
+    bulletin.bulletinEvoke(bot, trigger);
+  },
+  0
+)
+
+let dummycard = require ("./templates/about.json");
 // 'help' command
 framework.hears (
   "testcard",
@@ -632,6 +603,22 @@ framework.on('attachmentAction', async (bot, trigger) => {
   console.log(`\n\n\nReceived Attachment:\n${JSON.stringify(trigger.attachmentAction, null, 2)}`);
 
   switch (formData.formType) {
+
+    case "editBulletin": {
+      await bulletin.editBulletinEvoke(bot, trigger, attachedForm);
+      break;
+    }
+
+    case "bulletinCreate": {
+      await bulletin.bulletinCreate(bot, trigger, attachedForm);
+      break;
+    }
+
+    case "bulletinNewBulletin": {
+      console.log("Response bulletinNewBulletin caught.")
+      await bulletin.initNewBulletin(bot, trigger, attachedForm);
+      break;
+    }
     // Handle helpDelete
     // Submitted when a user clicks 'Delete this message' in the help command
     case "helpDelete": {
@@ -2232,3 +2219,7 @@ app.post("/submit", webhook(framework));
 app.listen(config.port, () => {
   framework.debug('Framework listening on port %s', config.port);
 });
+
+module.exports = {
+  generaterandomString
+};
