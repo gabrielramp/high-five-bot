@@ -4,3 +4,4 @@ node_modules
 images
 submissions
 authorization/bulletinAuthorizations.JSON
+.env

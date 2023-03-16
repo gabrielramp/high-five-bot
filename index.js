@@ -600,12 +600,43 @@ framework.on('attachmentAction', async (bot, trigger) => {
   const formData = trigger.attachmentAction.inputs;
 
   // Log the submission data
-  console.log(`\n\n\nReceived Attachment:\n${JSON.stringify(trigger.attachmentAction, null, 2)}`);
+  //console.log(`\n\n\nReceived Attachment:\n${JSON.stringify(trigger.attachmentAction, null, 2)}`);
 
   switch (formData.formType) {
 
+    case "deleteSelectedBulletinItems": {
+      await bulletin.deleteSelectedBulletinItems(bot, trigger, attachedForm)
+      break;
+    }
+
+    case "submitNewBulletinIdItem": {
+      await bulletin.insertNewItem(bot, trigger, attachedForm);
+      break;
+    }
+
+    case "bulletinSubmitAndContinue": {
+      await bulletin.insertNewItem(bot, trigger, attachedForm);
+      await bulletin.addBulletinItemsEvoke(bot, trigger, attachedForm);
+      break;
+    }
+
+    case "addBulletinItemsEvoke": {
+      await bulletin.addBulletinItemsEvoke(bot, trigger, attachedForm);
+      break;
+    }
+
+    case "bulletinView": {
+      await bulletin.printBulletin(bot, trigger, attachedForm);
+      break;
+    }
+
     case "editBulletin": {
       await bulletin.editBulletinEvoke(bot, trigger, attachedForm);
+      break;
+    }
+
+    case "editBulletinId": {
+      await bulletin.editBulletinId(bot, trigger, attachedForm);
       break;
     }
 
@@ -616,9 +647,12 @@ framework.on('attachmentAction', async (bot, trigger) => {
 
     case "bulletinNewBulletin": {
       console.log("Response bulletinNewBulletin caught.")
-      await bulletin.initNewBulletin(bot, trigger, attachedForm);
+      const newBulletinId = await bulletin.initNewBulletin(bot, trigger, attachedForm);
+      // Then, we'll let the updateViewers function handle the viewer permissions setting.
+      await bulletin.updateViewerLists(bot, newBulletinId, attachedForm.roomId);
       break;
     }
+
     // Handle helpDelete
     // Submitted when a user clicks 'Delete this message' in the help command
     case "helpDelete": {
@@ -700,7 +734,7 @@ framework.on('attachmentAction', async (bot, trigger) => {
           let singleresult = 
           {
             type: "TextBlock",
-            text: `${option}: ${count}`,
+            text: `${option}: \n${count}`,
             weight: "Bolder",
             spacing: "Small",
             size: "Medium",
@@ -733,7 +767,7 @@ framework.on('attachmentAction', async (bot, trigger) => {
           let singleresult =
             {
               type: "TextBlock",
-              text: `${option}: 0`,
+              text: `${option}: \n0`,
               weight: "Bolder",
               spacing: "Small",
               size: "Medium",
