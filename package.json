@@ -29,6 +29,7 @@
     "dotenv": "^16.0.3",
     "express": "^4.14.0",
     "https": "1.0.0",
+    "webex": "^2.44.1",
     "webex-node-bot-framework": "^2.3.14"
   },
   "devDependencies": {

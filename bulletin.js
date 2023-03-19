@@ -12,7 +12,7 @@ async function bulletinEvoke(bot, trigger) {
     let cardTitle = 
     {
         "type": "TextBlock",
-        "text": "Bulletin 🪧",
+        "text": "Bulletin 📜",
         "wrap": true,
         "size": "Medium",
         "weight": "Bolder"
@@ -22,7 +22,7 @@ async function bulletinEvoke(bot, trigger) {
     let flavorText = 
     {
         "type": "TextBlock",
-        "text": "Save Important Information!",
+        "text": "Save important information!",
         "wrap": true,
         "spacing": "None"
     };
@@ -56,6 +56,7 @@ async function bulletinEvoke(bot, trigger) {
         topBulletinsBlock = 
         {
             "type": "Container",
+            "spacing": "Default",
             "items": [
                 {
                     "type": "TextBlock",
@@ -80,7 +81,7 @@ async function bulletinEvoke(bot, trigger) {
     let actionsBlock = 
     {
         "type": "Container",
-        "spacing": "Small",
+        "spacing": "Medium",
         "items": [
             {
                 "type": "TextBlock",
@@ -94,6 +95,18 @@ async function bulletinEvoke(bot, trigger) {
                 "actions": [
                     {
                         "type": "Action.Submit",
+                        "spacing": "None",
+                        "title": "View all Bulletins",
+                        "id": "viewAllBulletinsEvoke",
+                        data: {
+                            "formType": "viewAllBulletinsEvoke",
+                            "endpoint": `${process.env.WEBHOOKURL}/submit`,
+                            "trigger": trigger
+                        }
+                    },
+                    {
+                        "type": "Action.Submit",
+                        "spacing": "None",
                         "title": "Create a Bulletin",
                         "id": "createBulletin",
                         data: {
@@ -104,22 +117,29 @@ async function bulletinEvoke(bot, trigger) {
                     },
                     {
                         "type": "Action.Submit",
+                        "spacing": "None",
                         "title": "Edit a Bulletin",
                         "id": "editBulletin",
                         data: {
-                            "formType": "editBulletin",
+                            "formType": "editBulletinEvoke",
                             "endpoint": `${process.env.WEBHOOKURL}/submit`,
                             "trigger": trigger
                         }
-                    },
+                    }
+                ]
+            },
+            {
+                "type": "ActionSet",
+                "spacing": "Small",
+                "actions": [
                     {
                         "type": "Action.Submit",
-                        "title": "Edit Bulletin Permissions",
-                        "id": "EditBulletinPerms",
-                        data: {
-                            "formType": "EditBulletinPerms",
+                        "title": "Cancel",
+                        "id": "helpDelete",
+                        "data": {
+                            "formType": "helpDelete",
                             "endpoint": `${process.env.WEBHOOKURL}/submit`,
-                            "trigger": trigger
+                            "trigger": `${trigger}`,
                         }
                     }
                 ]
@@ -240,7 +260,7 @@ async function initNewBulletin(bot, trigger, attachedForm) {
         viewers: [],
         items: [
             {
-                id: 1,
+                id: utils.generaterandomString(),
                 content: newBulletinItem
             }
         ]
@@ -400,10 +420,106 @@ async function updateViewerLists(bot, bulletinId, roomId) {
 async function editBulletinEvoke(bot, trigger, attachedForm) {
     // formData will contain all information passed through with the submission action of the interacted Adaptive Card, so hopefully i.e formType, formTitle, formId.
     const formData = trigger.attachmentAction.inputs;
+    const editEvoker = await utils.getPersonDetails(attachedForm.personId);
+    console.log(`DEBUG: editBulletinEvoke from ${editEvoker.userName}`)
 
     // TODO: Find the user's email, then go through all of the forms that they are 'owner' or 'editor' to. List these, and allow them to click them to edit them.
-    //       Ideally we want to list these in order of most recently edited to least recently,
 
+    // Read authorization data
+    const authFile = path.join(__dirname, 'authorization', `bulletinAuthorizations.json`);
+    let authDataObject = {};
+    if (fs.existsSync(authFile)) {
+        const authData = fs.readFileSync(authFile);
+        authDataObject = await JSON.parse(authData);
+    }
+    else {
+        return;
+    }
+
+    // 1. Retrieve every 'bulletinId' that the editEvoker lists as being an "Owner" or "Editor"
+    const ownerBulletins = authDataObject.Owner[editEvoker.userName] || [];
+    const editorBulletins = authDataObject.Editor[editEvoker.userName] || [];
+    const authorizedBulletins = [...new Set([...ownerBulletins, ...editorBulletins])];
+
+    // 2. Sort the 'bulletinIds' in the array from most recently updated to least recently updated
+    const sortedAuthorizedBulletins = await authorizedBulletins.sort(async (a, b) => {
+        const bulletinAFile = path.join(__dirname, 'bulletins', `${a}.json`);
+        const bulletinAData = fs.readFileSync(bulletinAFile);
+        const bulletinA = JSON.parse(bulletinAData);
+
+        const bulletinBFile = path.join(__dirname, 'bulletins', `${b}.json`);
+        const bulletinBData = fs.readFileSync(bulletinBFile);
+        const bulletinB = JSON.parse(bulletinBData);
+
+        return bulletinB.unixLastEdited - bulletinA.unixLastEdited;
+    }).reverse(); // reversing the array because I accidentally sorted descending instead of ascending oops
+    console.log(`DEBUG: editBulletinEvoke: Final bulletin array:`+  JSON.stringify(sortedAuthorizedBulletins,null,2));
+
+    // 3.   After that, we want to build the Microsoft Adaptive card. First we should check how many items are in the array, so we know how many ActionSets to push into our body.
+
+    // Build an array of names for the bulletinIds]
+    let allActions = []
+    let allActionSets = []
+    for (let i = 0; i < sortedAuthorizedBulletins.length; i++) {
+        console.log(`DEBUG: editEvoke: Building action button ${await getBulletinNameFromId(sortedAuthorizedBulletins[i])}`)
+        let singleAction = 
+        {
+            "type": "Action.Submit",
+            "title": `${await getBulletinNameFromId(sortedAuthorizedBulletins[i])}`,
+            "id": `${sortedAuthorizedBulletins[i]}`,
+            "data": {
+                "formType": "editBulletinId",
+                "endpoint": `${process.env.WEBHOOKURL}/submit`,
+                "trigger": trigger,
+                "bulletinId": sortedAuthorizedBulletins[i]
+            }
+        }
+        allActions.push(singleAction);
+    }
+    console.log(`Resulting actions array: ${JSON.stringify(allActions,null,2)}`)
+
+    for (let i = 0; i < allActions.length; i += 3) {
+        let actionSet = {
+            "type": "ActionSet",
+            "spacing": "None",
+            "actions": allActions.slice(i, i + 3)
+        };
+        allActionSets.push(actionSet);
+    }
+    console.log(`Resulting action sets array: ${JSON.stringify(allActionSets, null, 2)}`);
+
+    
+    let editEvokeCard = 
+    {
+        "type": "AdaptiveCard",
+        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+        "version": "1.3",
+        "body": [
+            {
+                "type": "TextBlock",
+                "text": "Edit a Bulletin",
+            },
+            {
+                "type": "TextBlock",
+                "spacing": "None",
+                "text": "Select a Bulletin to edit:",
+                "size": "Medium",
+                "weight": "Bolder"
+            },
+            {
+                "type": "Container",
+                "spacing": "Medium",
+                "items": allActionSets
+            }
+        ]
+    };
+
+    try {
+        await bot.censor(attachedForm.messageId);
+        await bot.sendCard(editEvokeCard, "editEvokeCard");
+    } catch (e) {
+        console.log(e)
+    }
 }
 
 // This function will look at a person's bulletins, find the most recent bulletin views, and return an object that contains their names and bulletin Ids in order.
@@ -545,7 +661,7 @@ async function printBulletin(bot, trigger, attachedForm) {
         console.log(e);
     }
 
-    // And finally, TODO: Update the person's Unix timestamp in their auth file for this bulletinId.
+    // And finally, update the person's Unix timestamp in their auth file for this bulletinId.
     let authDataObject = {};
     const authFile = path.join(__dirname, 'authorization', `bulletinAuthorizations.json`);
     if (fs.existsSync(authFile)) {
@@ -591,7 +707,7 @@ async function editBulletinId(bot, trigger, attachedForm) {
     else {
         return;
     }
-    // TODO: build this card with toggles for each of the options, and then create the actions that have the option to delete selected, edit permissions, or add a new item
+
     let editBulletinIdItems = []
 
     // Iterate over the 'items' array and create a toggle box for each item
@@ -674,6 +790,32 @@ async function editBulletinId(bot, trigger, attachedForm) {
                             "endpoint": `${process.env.WEBHOOKURL}/submit`,
                             "trigger": `${trigger}`,
                             "bulletinId": bulletinId
+                        }
+                    }
+                ]
+            },
+            {
+                "type": "ActionSet",
+                "spacing": "None",
+                "actions": [
+                    {
+                        "type": "Action.Submit",
+                        "title": "Cancel",
+                        "id": "helpDelete",
+                        "data": {
+                            "formType": "helpDelete",
+                            "endpoint": `${process.env.WEBHOOKURL}/submit`,
+                            "trigger": `${trigger}`,
+                        }
+                    },
+                    {
+                        "type": "Action.Submit",
+                        "title": "Delete this Bulletin",
+                        "id": "destroyBulletin",
+                        "data": {
+                            "formType": "destroyBulletin",
+                            "endpoint": `${process.env.WEBHOOKURL}/submit`,
+                            "trigger": `${trigger}`,
                         }
                     }
                 ]
@@ -802,7 +944,10 @@ async function insertNewItem(bot, trigger, attachedForm) {
     // Adding the item
     bulletinDataObject.items.push(newItemObject);
     // Setting new timestamp
-    bulletinDataObject.unixLastEdited = utils.getUnixTimestamp.toString();
+    console.log(`DEBUG: InsertNewItem: Old Unix Timestamp: ${bulletinDataObject.unixLastEdited}`);
+    const tempTimestamp = utils.getUnixTimestamp();
+    bulletinDataObject.unixLastEdited = tempTimestamp;
+    console.log(`DEBUG: InsertNewItem: New Unix Timestamp: ${bulletinDataObject.unixLastEdited}`);
 
     let newItemConfirmationCard = 
     {
@@ -872,6 +1017,141 @@ async function insertNewItem(bot, trigger, attachedForm) {
     console.log(`Successfully added item to bulletin ${bulletinId}.`);
 }
 
+async function editPermissionsEvoke(bot, trigger, attachedForm) {
+    const formData = trigger.attachmentAction.inputs;
+    const bulletinId = formData.bulletinId;
+
+    // Retrieve bulletin data
+    let bulletinDataObject = {};
+    const bulletinFile = path.join(__dirname, 'bulletins', `${bulletinId}.json`);
+    if (fs.existsSync(bulletinFile)) {
+        const bulletinData = fs.readFileSync(bulletinFile);
+        bulletinDataObject = JSON.parse(bulletinData);
+    }
+    else {
+        return;
+    }
+
+    
+    let bulletinEditors = []
+
+    let editorsList = 
+    {
+        "type": "Container",
+        "items": [
+            {
+                "type": "TextBlock",
+                "text": "Current Editors:"
+            },
+            {
+                "type": "Input.ChoiceSet",
+                "spacing": "None",
+                "choices": bulletinEditors,
+                "isMultiSelect": true,
+                "placeholder": "Placeholder text",
+                "style": "expanded",
+                "id": "bulletinEditorsChoiceSet",
+            } 
+        ]
+    }
+
+    // Iterate over the 'items' array and create a toggle box for each item
+
+    let actionsSetList = []
+    console.log(`DEBUG: editPermissionsEvoke: Editors array:`+bulletinDataObject.editors)
+    if (bulletinDataObject.editors.length > 0) {
+        for (let i = 0; i < bulletinDataObject.editors.length; i++) {
+            const singleeditor = bulletinDataObject.editors[i];
+            console.log(`DEBUG: editPermissionsEvoke: Found editor in array ${bulletinDataObject.editors[i]}`);
+            const toggleOption = {
+                "title": bulletinDataObject.editors[i],
+                "value": bulletinDataObject.editors[i]
+            };
+            bulletinEditors.push(toggleOption);
+        }
+        actionsSetList = 
+        [
+            {
+                "type": "Action.Submit",
+                "title": `Add Editors`,
+                "data": {
+                    "bulletinId": `${bulletinId}`,
+                    "formType": `addEditorsEvoke`
+                }
+            },
+            {
+                "type": "Action.Submit",
+                "title": `Remove Selected Editors`,
+                "data": {
+                    "bulletinId": `${bulletinId}`,
+                    "formType": `removeSelectedEditors`
+                }
+            }
+        ]
+    }
+    else {
+        editorsList = { "type": "Container", "items": [{"type": "TextBlock", "text": "There are currently no additional editors for this Bulletin."}]};
+        actionsSetList = 
+        [
+            {
+                "type": "Action.Submit",
+                "title": `Add Editors`,
+                "data": {
+                    "bulletinId": `${bulletinId}`,
+                    "formType": `addEditorsEvoke`
+                }
+            }
+        ]
+    }
+
+    let editPermissionsEvoke = 
+    {
+        "type": "AdaptiveCard",
+        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+        "version": "1.3",
+        "body": [
+            {
+                "type": "Container",
+                "items": [
+                    {
+                        "type": "TextBlock",
+                        "text": `Editing Permissions for your Bulletin:`,
+                        "wrap": true,
+                        "weight": "Bolder"
+                    },
+                    {
+                        "type": "TextBlock",
+                        "text": `${await getBulletinNameFromId(bulletinId)}`,
+                        "weight": "Bolder",
+                        "size": "Medium",
+                        "spacing": "None"
+                    }
+                ]
+            },
+            editorsList,
+            {
+                "type": "ActionSet",
+                "spacing": "Small",
+                "actions": actionsSetList
+            }
+        ]
+    }
+
+    try {
+        //await bot.censor(attachedForm.messageId);
+        await bot.sendCard(editPermissionsEvoke, "editPermissionsEvoke");
+    } catch (e) {
+        console.log(e);
+    }
+
+}
+
+async function addEditorToBulletin(personId, formId) {
+
+}
+
+// Helper functions
+
 async function deleteSelectedBulletinItems(bot, trigger, attachedForm) {
     console.log(`DEBUG insertNewItem: Received form ${JSON.stringify(attachedForm, null, 2)}`);
     let formData = attachedForm.inputs;
@@ -919,12 +1199,6 @@ async function getBulletinNameFromId(bulletinId) {
     }
 }
 
-async function newAuthorization(personId, formId, authType) {
-
-}
-
-
-
 module.exports = {
     bulletinEvoke: bulletinEvoke,
     bulletinCreate: bulletinCreate,
@@ -935,5 +1209,7 @@ module.exports = {
     editBulletinId: editBulletinId,
     addBulletinItemsEvoke: addBulletinItemsEvoke,
     insertNewItem: insertNewItem,
-    deleteSelectedBulletinItems: deleteSelectedBulletinItems
+    deleteSelectedBulletinItems: deleteSelectedBulletinItems,
+    editBulletinEvoke: editBulletinEvoke,
+    editPermissionsEvoke: editPermissionsEvoke
 };

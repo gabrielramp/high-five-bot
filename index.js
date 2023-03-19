@@ -79,14 +79,27 @@ framework.on("Initialized, coming online...", () => {
 *  \___\___/|_| |_| |_|_| |_| |_|\__,_|_| |_|\__,_|___/
 *
 */                     
+const Webex = require('webex');
+
+// Set up your Webex bot access token and room ID
+const accessToken = `${process.env.BOTTOKEN}`;
+const roomId = 'YOUR_ROOM_ID';
+
+// Create a new instance of the Webex SDK using your access token
+const webex = Webex.init({
+  credentials: {
+    access_token: accessToken
+  }
+});
 
 framework.hears (
-  "devtest",
+  "devtestmessaging",
   async (bot, trigger) => {
     console.log(`${JSON.stringify(bot.room, undefined, 2)}`);
     console.log(`${JSON.stringify(bot.membership, undefined, 2)}`);
     console.log(`${JSON.stringify(bot.webex, undefined, 2)}`);
-    bot.webex.memberships.list({ roomId: bot.room.id })
+    console.log(`BOT: ${JSON.stringify(trigger,null,2)}`);
+    /*bot.webex.memberships.list({ roomId: bot.room.id })
     .then(async (memberships) => {
       console.log(`${JSON.stringify(memberships, undefined, 2)}`);
       let allIds = [];
@@ -94,8 +107,16 @@ framework.hears (
           allIds.push(member.personId)
         }
       console.log(`allIds: ${allIds}`);
-    });
-
+    });*/
+    webex.messages.create({
+      roomId: trigger.message.roomId,
+      text: 'Hello, world!'
+    }).then((message) => {
+      console.log('Message sent to room', bot.roomId);
+      console.log('Message details:', message);
+    }).catch((error) => {
+      console.error('Error sending message:', error);
+    })
   },
   0
 )
@@ -600,12 +621,27 @@ framework.on('attachmentAction', async (bot, trigger) => {
   const formData = trigger.attachmentAction.inputs;
 
   // Log the submission data
-  //console.log(`\n\n\nReceived Attachment:\n${JSON.stringify(trigger.attachmentAction, null, 2)}`);
+  console.log(`\n\n\nReceived Attachment:\n${JSON.stringify(trigger.attachmentAction, null, 2)}`);
 
   switch (formData.formType) {
 
+    case "EditBulletinPerms": {
+      await bulletin.editPermissionsEvoke(bot, trigger, attachedForm);
+      break;
+    }
+
+    case "EditBulletinPerms": {
+      await bulletin.editPermissionsEvoke(bot, trigger, attachedForm);
+      break;
+    }
+
+    case "editBulletinEvoke": {
+      await bulletin.editBulletinEvoke(bot, trigger, attachedForm);
+      break;
+    }
+
     case "deleteSelectedBulletinItems": {
-      await bulletin.deleteSelectedBulletinItems(bot, trigger, attachedForm)
+      await bulletin.deleteSelectedBulletinItems(bot, trigger, attachedForm);
       break;
     }
 
