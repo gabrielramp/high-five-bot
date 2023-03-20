@@ -625,6 +625,38 @@ framework.on('attachmentAction', async (bot, trigger) => {
 
   switch (formData.formType) {
 
+    case "nukeBulletin": {
+      await bulletin.nukeBulletin(bot, trigger, attachedForm);
+      break;
+    }
+
+    case "destroyBulletin": {
+      await bulletin.destroyBulletinEvoke(bot, trigger, attachedForm);
+      break;
+    }
+
+    case "removeSelectedEditors": {
+      await bulletin.removeEditorsFromBulletin(bot, trigger, attachedForm);
+      await bulletin.editPermissionsEvoke(bot, trigger, attachedForm);
+      break;
+    }
+
+    case "newEditorStringandContinue": {
+      await bulletin.addEditorToBulletin(bot, trigger, attachedForm);
+      await bulletin.addEditorsEvoke(bot, trigger, attachedForm);
+    }
+
+    case "newEditorString": {
+      await bulletin.addEditorToBulletin(bot, trigger, attachedForm);
+      await bulletin.editPermissionsEvoke(bot, trigger, attachedForm);
+      break;
+    }
+
+    case "addEditorsEvoke": {
+      await bulletin.addEditorsEvoke(bot, trigger, attachedForm);
+      break;
+    }
+
     case "EditBulletinPerms": {
       await bulletin.editPermissionsEvoke(bot, trigger, attachedForm);
       break;

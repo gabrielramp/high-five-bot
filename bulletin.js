@@ -603,7 +603,7 @@ async function printBulletin(bot, trigger, attachedForm) {
     let deleteAction = 
     {
         "type": "Action.Submit",
-        "title": "Delete this Message",
+        "title": "Cancel",
         "data": {
             "formType": "helpDelete"
         }
@@ -816,6 +816,7 @@ async function editBulletinId(bot, trigger, attachedForm) {
                             "formType": "destroyBulletin",
                             "endpoint": `${process.env.WEBHOOKURL}/submit`,
                             "trigger": `${trigger}`,
+                            "bulletinId": bulletinId
                         }
                     }
                 ]
@@ -1095,6 +1096,14 @@ async function editPermissionsEvoke(bot, trigger, attachedForm) {
         [
             {
                 "type": "Action.Submit",
+                "title": `Cancel`,
+                "data": {
+                    "bulletinId": `${bulletinId}`,
+                    "formType": `helpDelete`
+                }
+            },
+            {
+                "type": "Action.Submit",
                 "title": `Add Editors`,
                 "data": {
                     "bulletinId": `${bulletinId}`,
@@ -1116,8 +1125,7 @@ async function editPermissionsEvoke(bot, trigger, attachedForm) {
                     {
                         "type": "TextBlock",
                         "text": `Editing Permissions for your Bulletin:`,
-                        "wrap": true,
-                        "weight": "Bolder"
+                        "wrap": true
                     },
                     {
                         "type": "TextBlock",
@@ -1138,16 +1146,314 @@ async function editPermissionsEvoke(bot, trigger, attachedForm) {
     }
 
     try {
-        //await bot.censor(attachedForm.messageId);
+        await bot.censor(attachedForm.messageId);
         await bot.sendCard(editPermissionsEvoke, "editPermissionsEvoke");
+    } catch (e) {
+        console.log(e);
+    }
+}
+
+async function addEditorsEvoke(bot, trigger, attachedForm) {
+    const formData = trigger.attachmentAction.inputs;
+    const bulletinId = formData.bulletinId;
+
+    let addEditorsEvokeCard = 
+    {
+        "type": "AdaptiveCard",
+        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+        "version": "1.3",
+        "body": [
+            {
+                "type": "Container",
+                "items": [
+                    {
+                        "type": "TextBlock",
+                        "text": "Add an editor to your Bulletin:",
+                        "wrap": true
+                    },
+                    {
+                        "type": "TextBlock",
+                        "text": `${await getBulletinNameFromId(bulletinId)}`,
+                        "wrap": true,
+                        "spacing": "None",
+                        "size": "Medium",
+                        "weight": "Bolder"
+                    }
+                ]
+            },
+            {
+                "type": "Container",
+                "items": [
+                    {
+                        "type": "Input.Text",
+                        "placeholder": "example@cisco.com",
+                        "label": "Type your authorized editor's Webex email:",
+                        "id": "newEditorStringInput"
+                    }
+                ]
+            },
+            {
+                "type": "ActionSet",
+                "spacing": "None",
+                "actions": [
+                    {
+                        "type": "Action.Submit",
+                        "title": "Add Editor",
+                        "id": "newEditorString",
+                        "data": {
+                            "formType": "newEditorString",
+                            "endpoint": `${process.env.WEBHOOKURL}/submit`,
+                            "trigger": `${trigger}`,
+                            "bulletinId": bulletinId
+                        }
+                    },
+                    {
+                        "type": "Action.Submit",
+                        "title": "Add Editor and Add Another Editor",
+                        "id": "newEditorStringandContinue",
+                        "data": {
+                            "formType": "newEditorStringandContinue",
+                            "endpoint": `${process.env.WEBHOOKURL}/submit`,
+                            "trigger": `${trigger}`,
+                            "bulletinId": bulletinId
+                        }
+                    }
+                ]
+            }
+        ]
+    }
+
+    try {
+        await bot.censor(attachedForm.messageId);
+        await bot.sendCard(addEditorsEvokeCard, "Add Editors Card");
+    } catch (e) {
+        console.log(e);
+    }
+}
+
+async function addEditorToBulletin(bot, trigger, attachedForm) {
+    const formData = trigger.attachmentAction.inputs;
+    const bulletinId = formData.bulletinId;
+    const newEditor = formData.newEditorStringInput;
+
+    let bulletinDataObject = {};
+    const bulletinFile = path.join(__dirname, 'bulletins', `${bulletinId}.json`);
+    if (fs.existsSync(bulletinFile)) {
+        const bulletinData = fs.readFileSync(bulletinFile);
+        bulletinDataObject = JSON.parse(bulletinData);
+    }
+    else {
+        return;
+    }
+
+    const isValidEmail = /^[\w-.]+@([\w-]+\.)+[\w-]{2,}$/g.test(newEditor);
+    if (isValidEmail) {
+        if (!bulletinDataObject.editors.includes(newEditor)) {
+            bulletinDataObject.editors.push(newEditor);
+        }
+        else {
+            return;
+        }
+        try {fs.writeFileSync(bulletinFile, JSON.stringify(bulletinDataObject,null,2));} catch (e) {console.log(e)}
+    }
+    else {
+        bot.say("Sorry! That wasn't a valid email. Please try again. Here's what you typed: " + newEditor);
+    }
+
+    
+}
+
+async function removeEditorsFromBulletin(bot, trigger, attachedForm) {
+    const formData = trigger.attachmentAction.inputs;
+    const bulletinId = formData.bulletinId;
+    const removeEditorsArray = formData.bulletinEditorsChoiceSet;
+
+    let bulletinDataObject = {};
+    const bulletinFile = path.join(__dirname, 'bulletins', `${bulletinId}.json`);
+    if (fs.existsSync(bulletinFile)) {
+        const bulletinData = fs.readFileSync(bulletinFile);
+        bulletinDataObject = JSON.parse(bulletinData);
+    }
+    else {
+        return;
+    }
+
+    bulletinDataObject.editors = bulletinDataObject.editors.filter((editor) => !removeEditorsArray.includes(editor));
+
+    try {fs.writeFileSync(bulletinFile, JSON.stringify(bulletinDataObject,null,2));} catch (e) {console.log(e)}
+}
+
+async function destroyBulletinEvoke(bot, trigger, attachedForm) {
+    const formData = trigger.attachmentAction.inputs;
+    const bulletinId = formData.bulletinId;
+    
+    let destroyBulletinEvokeCard =
+    {
+        "type": "AdaptiveCard",
+        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+        "version": "1.3",
+        "body": [
+            {
+                "type": "Container",
+                "items": [
+                    {
+                        "type": "TextBlock",
+                        "text": "You are attempting to delete the bulletin",
+                        "wrap": true
+                    },
+                    {
+                        "type": "TextBlock",
+                        "text": `${await getBulletinNameFromId(bulletinId)}`,
+                        "wrap": true,
+                        "weight": "Bolder",
+                        "size": "Medium",
+                        "spacing": "None"
+                    },
+                    {
+                        "type": "TextBlock",
+                        "text": "Are you sure you want to continue?",
+                        "wrap": true,
+                        "spacing": "None"
+                    }
+                ]
+            },
+            {
+                "type": "ActionSet",
+                "spacing": "None",
+                "actions": [
+                    {
+                        "type": "Action.Submit",
+                        "title": "No, take me back.",
+                        "id": "editBulletinId",
+                        "data": {
+                            "formType": "editBulletinId",
+                            "endpoint": `${process.env.WEBHOOKURL}/submit`,
+                            "trigger": `${trigger}`,
+                            "bulletinId": bulletinId
+                        }
+                    },
+                    {
+                        "type": "Action.Submit",
+                        "title": "Yes, delete this Bulletin",
+                        "id": "nukeBulletin",
+                        "data": {
+                            "formType": "nukeBulletin",
+                            "endpoint": `${process.env.WEBHOOKURL}/submit`,
+                            "trigger": `${trigger}`,
+                            "bulletinId": bulletinId,
+                            "oldBulletinName": `${await getBulletinNameFromId(bulletinId)}`
+                        }
+                    }
+                ]
+            }
+        ]
+    }
+
+    try {
+        await bot.censor(attachedForm.messageId);
+        await bot.sendCard(destroyBulletinEvokeCard, "destroyBulletinEvokeCard");
     } catch (e) {
         console.log(e);
     }
 
 }
 
-async function addEditorToBulletin(personId, formId) {
+async function nukeBulletin(bot, trigger, attachedForm) {
+    // Remove every instance of this BulletinId from the authorization files. This is imperative to be done seamlessly such that the file continues to function seamlessly as if the bulletin never existed.
+    const formData = trigger.attachmentAction.inputs;
+    const bulletinId = formData.bulletinId;
+    const oldBulletinName = formData.oldBulletinName;
+    
+    const authFile = path.join(__dirname, 'authorization', `bulletinAuthorizations.json`);
+    let authDataObject = {};
+    if (fs.existsSync(authFile)) {
+        const authData = fs.readFileSync(authFile);
+        authDataObject = await JSON.parse(authData);
+    }
+    else {
+        return;
+    }
 
+    // Remove bulletinId from "Owner" object arrays
+    Object.keys(authDataObject.Owner).forEach((user) => {
+        authDataObject.Owner[user] = authDataObject.Owner[user].filter((id) => id !== bulletinId);
+    });
+
+    // Remove bulletinId from "Editor" object arrays
+    Object.keys(authDataObject.Editor).forEach((user) => {
+        authDataObject.Editor[user] = authDataObject.Editor[user].filter((id) => id !== bulletinId);
+    });
+
+    // Remove bulletinId from "Viewer" object arrays
+    Object.keys(authDataObject.Viewer).forEach((user) => {
+        authDataObject.Viewer[user] = authDataObject.Viewer[user].map((obj) => {
+        if (typeof obj === "string") {
+            // If obj is a string, check if it matches the bulletinId to be removed
+            return obj === bulletinId ? null : obj;
+        } else {
+            // If obj is an object, check if it has the bulletinId to be removed
+            return obj.bulletinId === bulletinId ? null : obj;
+        }
+        }).filter((obj) => obj !== null);
+    });
+
+    // Write the updated authDataObject to the file
+    try {
+        fs.writeFileSync(authFile, JSON.stringify(authDataObject, null, 2));
+    } catch (e) {
+        console.log(e)
+    }
+    
+
+    // Now to delete the bulletin file
+    let bulletinDataObject = {};
+    const bulletinFile = path.join(__dirname, 'bulletins', `${bulletinId}.json`);
+    if (fs.existsSync(bulletinFile)) {
+        try {fs.unlinkSync(bulletinFile)} catch (e) {console.log(e)}
+    }
+    else {
+        return;
+    }
+
+    let successfullyDeletedCard = 
+    {
+        "type": "AdaptiveCard",
+        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+        "version": "1.3",
+        "body": [
+            {
+                "type": "Container",
+                "items": [
+                    {
+                        "type": "TextBlock",
+                        "text": "Your bulletin,",
+                        "wrap": true
+                    },
+                    {
+                        "type": "TextBlock",
+                        "text": `${oldBulletinName}`,
+                        "wrap": true,
+                        "weight": "Bolder",
+                        "size": "Medium",
+                        "spacing": "None"
+                    },
+                    {
+                        "type": "TextBlock",
+                        "text": "Has successfully been deleted.",
+                        "wrap": true,
+                        "spacing": "None"
+                    }
+                ]
+            }
+        ]
+    }
+
+    try {
+        await bot.censor(attachedForm.messageId);
+        await bot.sendCard(successfullyDeletedCard, "successfullyDeletedCard");
+    } catch (e) {
+        console.log(e);
+    }
 }
 
 // Helper functions
@@ -1211,5 +1517,10 @@ module.exports = {
     insertNewItem: insertNewItem,
     deleteSelectedBulletinItems: deleteSelectedBulletinItems,
     editBulletinEvoke: editBulletinEvoke,
-    editPermissionsEvoke: editPermissionsEvoke
+    editPermissionsEvoke: editPermissionsEvoke,
+    addEditorsEvoke: addEditorsEvoke,
+    addEditorToBulletin: addEditorToBulletin,
+    removeEditorsFromBulletin: removeEditorsFromBulletin,
+    destroyBulletinEvoke: destroyBulletinEvoke,
+    nukeBulletin: nukeBulletin
 };
