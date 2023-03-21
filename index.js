@@ -10,6 +10,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 app.use(bodyParser.json());
 app.use(express.static("images"));
+const utils = require('./utils');
 
 
 
@@ -95,6 +96,7 @@ const webex = Webex.init({
 framework.hears (
   "devtestmessaging",
   async (bot, trigger) => {
+    try {utils.logCommandEvoke("devtestmessaging");} catch (e) {console.log(e)}
     console.log(`${JSON.stringify(bot.room, undefined, 2)}`);
     console.log(`${JSON.stringify(bot.membership, undefined, 2)}`);
     console.log(`${JSON.stringify(bot.webex, undefined, 2)}`);
@@ -126,26 +128,27 @@ const bulletin = require('./bulletin.js');
 framework.hears (
   "bulletin",
   async (bot, trigger) => {
+    try {utils.logCommandEvoke("bulletin");} catch (e) {console.log(e)}
     bulletin.bulletinEvoke(bot, trigger);
   },
   0
 )
 
-let dummycard = require ("./templates/about.json");
-// 'help' command
+/*let dummycard = require ("./templates/about.json");
 framework.hears (
   "testcard",
   (bot) => {
     bot.sendCard(testcard, "test card");
   },
   0
-)
+)*/
                    
                      
 // 'help' command
 framework.hears (
   "help",
   async (bot) => {
+    try {utils.logCommandEvoke("help");} catch (e) {console.log(e)}
     highfivehelp(bot);
   },
   0
@@ -156,6 +159,7 @@ framework.hears (
 framework.hears (
   "devcls",
   async (bot, trigger) => {
+    try {utils.logCommandEvoke("devcls");} catch (e) {console.log(e)}
     bot.say("markdown", "\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀\n⠀");
   },
   0
@@ -166,6 +170,7 @@ framework.hears (
 framework.hears(
   "about",
   (bot, trigger) => {
+    try {utils.logCommandEvoke("about");} catch (e) {console.log(e)}
     bot.say(`made by Gabe with <3
             \nhttps://www.youtube.com/watch?v=9JnGuLUvE4A
             \nSpecial Thanks to Brad, Max, and Julianna for testing the bot!`);
@@ -179,6 +184,7 @@ framework.hears(
 framework.hears(
   "getallemails",
   (bot, trigger) => {
+    try {utils.logCommandEvoke("getallemails");} catch (e) {console.log(e)}
     bot.webex.memberships.list({ roomId: bot.room.id })
     .then(async (memberships) => {
       let allemails = [];
@@ -210,6 +216,7 @@ const highfivecard = require('./templates/highfivecard.json');
 framework.hears(
   "highfivecard",
   (bot, trigger) => {
+    try {utils.logCommandEvoke("highfivecard");} catch (e) {console.log(e)}
 
     // Logging for debug weeeee
     console.log
@@ -285,6 +292,7 @@ const birthdaycard = require('./templates/birthdaycard.json');
 framework.hears(
   "birthdaycard",
   (bot, trigger) => {
+    try {utils.logCommandEvoke("birthdaycard");} catch (e) {console.log(e)}
 
     // The rest of this is the same as the 'highfive' function except the HTTP GET. Look up there to see how this works!
     bot.webex.memberships.list({ roomId: bot.room.id })
@@ -348,6 +356,7 @@ framework.hears (
   "poll",
   (bot,trigger) => {
     async function Poll() {
+      try {utils.logCommandEvoke("poll");} catch (e) {console.log(e)}
 
       // Create new ID for this poll
       const newPollId = generaterandomString();
@@ -435,6 +444,7 @@ framework.hears (
   "freeform",
   (bot, trigger) => {
     async function Freeform() {
+      try {utils.logCommandEvoke("freeform");} catch (e) {console.log(e)}
 
       // Creating our new ID
       const newFreeformId = generaterandomString();
@@ -501,6 +511,7 @@ framework.hears (
 framework.hears (
   "gas",
   (bot,trigger) => {
+    try {utils.logCommandEvoke("gas");} catch (e) {console.log(e)}
     
     // gas function
     async function newGas() {
@@ -625,6 +636,11 @@ framework.on('attachmentAction', async (bot, trigger) => {
 
   switch (formData.formType) {
 
+    case "viewAllBulletinsEvoke": {
+      await bulletin.viewAllBulletinsEvoke(bot, trigger, attachedForm);
+      break;
+    }
+
     case "nukeBulletin": {
       await bulletin.nukeBulletin(bot, trigger, attachedForm);
       break;
@@ -735,6 +751,7 @@ framework.on('attachmentAction', async (bot, trigger) => {
     // Handle POLL SUBMISSIONS (pollResponse)
     // Submitted when a user selects an option in a poll and clicks 'Submit'
     case "pollResponse": {
+      try {utils.logCommandEvoke("pollResponse");} catch (e) {console.log(e)}
       console.log("Handling 'pollResponse': Poll Selection Submission");
       // Submit the response to have it saved
       submitPollResponse(formData.formId, attachedForm.personId, formData.selectedOptions, formData.hasOther, formData.isMultiselect, formData.otherAnswer);
@@ -744,6 +761,7 @@ framework.on('attachmentAction', async (bot, trigger) => {
     // Handle POLL STATUS REQUEST (pollrequest)
     // Submitted when a user with a follow-up DM from the bot clicks 'View Current Results'; See 'pollfollowupcard' for template and logic.
     case "pollrequest": {
+      try {utils.logCommandEvoke("pollResultsRequest");} catch (e) {console.log(e)}
       // formTitle is the string English title of the original poll
       let formTitle = formData.formTitle;
       // pollId is the hex specifier of the original poll (and name of the JSON file containing its data)
@@ -1552,6 +1570,7 @@ framework.on('attachmentAction', async (bot, trigger) => {
     // Handle gas reply REQUEST
     // Submitted when a user clicks "Reply" after receiving a gas.
     case "gasReplyRequest": {
+      try {utils.logCommandEvoke("gasReply");} catch (e) {console.log(e)}
       // Original gas message
       const originalGas = formData.originalGas;
 
