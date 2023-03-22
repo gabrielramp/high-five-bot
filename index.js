@@ -317,12 +317,6 @@ framework.hears(
                 var firstname = response.data.firstName;
                 var avatarurl = response.data.avatar;
 
-                // And then we build the card as usual!
-                /*birthdaycard.body[0].columns[0].items[0].text = firstname;
-                birthdaycard.body[0].columns[0].items[1].url = avatarurl;
-                birthdaycard.body[0].columns[0].items[2].text = "HAPPY BIRTHDAY!";
-                birthdaycard.body[0].columns[0].items[3].text = "🎂🎂🎂";*/
-
                 let newBirthdayCard = 
                 {
                   "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
@@ -368,7 +362,7 @@ framework.hears(
                     }
                   ],
                   "backgroundImage": {
-                    "url": "https://github.com/gabrielramp/high-five-bot/blob/experimental/resources/birthdaybackground.png"
+                    "url": "https://github.com/gabrielramp/high-five-bot/blob/f0843c97d47397cfe1bb3ab118f42b5ca04aa2c2/resources/birthdaybackground.png?raw=true"
                   }
                 }
                 
