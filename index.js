@@ -362,7 +362,7 @@ framework.hears(
                     }
                   ],
                   "backgroundImage": {
-                    "url": "https://github.com/gabrielramp/high-five-bot/blob/f0843c97d47397cfe1bb3ab118f42b5ca04aa2c2/resources/birthdaybackground.png?raw=true"
+                    "url": "https://github.com/gabrielramp/high-five-bot/blob/98c2884f7b8b5eb52daa9a5510f233aadd931ca9/resources/birthdaybackground.png?raw=true"
                   }
                 }
                 
