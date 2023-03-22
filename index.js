@@ -636,6 +636,23 @@ framework.on('attachmentAction', async (bot, trigger) => {
 
   switch (formData.formType) {
 
+    case "newViewerStringandContinue": {
+      await bulletin.addViewerToBulletin(bot, trigger, attachedForm);
+      await bulletin.addViewersEvoke(bot, trigger, attachedForm);
+      break;
+    }
+
+    case "newViewerString": {
+      await bulletin.addViewerToBulletin(bot, trigger, attachedForm);
+      await bulletin.editPermissionsEvoke(bot, trigger, attachedForm);
+      break;
+    }
+
+    case "addViewersEvoke": {
+      await bulletin.addViewersEvoke(bot, trigger, attachedForm);
+      break;
+    }
+
     case "viewAllBulletinsEvoke": {
       await bulletin.viewAllBulletinsEvoke(bot, trigger, attachedForm);
       break;
@@ -670,11 +687,6 @@ framework.on('attachmentAction', async (bot, trigger) => {
 
     case "addEditorsEvoke": {
       await bulletin.addEditorsEvoke(bot, trigger, attachedForm);
-      break;
-    }
-
-    case "EditBulletinPerms": {
-      await bulletin.editPermissionsEvoke(bot, trigger, attachedForm);
       break;
     }
 
@@ -734,6 +746,7 @@ framework.on('attachmentAction', async (bot, trigger) => {
       const newBulletinId = await bulletin.initNewBulletin(bot, trigger, attachedForm);
       // Then, we'll let the updateViewers function handle the viewer permissions setting.
       await bulletin.updateViewerLists(bot, newBulletinId, attachedForm.roomId);
+      await bulletin.bulletinCreateConfirm(bot, trigger, attachedForm, newBulletinId);
       break;
     }
 

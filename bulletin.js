@@ -74,7 +74,65 @@ async function bulletinEvoke(bot, trigger) {
             ]
         };
         bulletinEvokeBodyBlock.push(topBulletinsBlock);
+    }
 
+    let actionsBlockActionSet = [];
+    if (!(hasTopBulletins === 0)) {
+        actionsBlockActionSet.push(
+            {
+                "type": "Action.Submit",
+                "spacing": "None",
+                "title": "View all Bulletins",
+                "id": "viewAllBulletinsEvoke",
+                data: {
+                    "formType": "viewAllBulletinsEvoke",
+                    "endpoint": `${process.env.WEBHOOKURL}/submit`,
+                    "trigger": trigger
+                }
+            }
+        )
+        actionsBlockActionSet.push(
+            {
+                "type": "Action.Submit",
+                "spacing": "None",
+                "title": "Create a Bulletin",
+                "id": "createBulletin",
+                data: {
+                    "formType": "bulletinCreate",
+                    "endpoint": `${process.env.WEBHOOKURL}/submit`,
+                    "trigger": trigger
+                }
+            }
+        )
+        actionsBlockActionSet.push(
+            {
+                "type": "Action.Submit",
+                "spacing": "None",
+                "title": "Edit a Bulletin",
+                "id": "editBulletin",
+                data: {
+                    "formType": "editBulletinEvoke",
+                    "endpoint": `${process.env.WEBHOOKURL}/submit`,
+                    "trigger": trigger
+                }
+            }
+        )
+    }
+    else
+    {
+        actionsBlockActionSet.push(
+            {
+                "type": "Action.Submit",
+                "spacing": "None",
+                "title": "Create a Bulletin",
+                "id": "createBulletin",
+                data: {
+                    "formType": "bulletinCreate",
+                    "endpoint": `${process.env.WEBHOOKURL}/submit`,
+                    "trigger": trigger
+                }
+            }
+        )
     }
 
     const actionsBlockText = hasTopBulletins === 0 ? "Get Started:" : "Bulletin some more:" 
@@ -92,41 +150,7 @@ async function bulletinEvoke(bot, trigger) {
             {
                 "type": "ActionSet",
                 "spacing": "None",
-                "actions": [
-                    {
-                        "type": "Action.Submit",
-                        "spacing": "None",
-                        "title": "View all Bulletins",
-                        "id": "viewAllBulletinsEvoke",
-                        data: {
-                            "formType": "viewAllBulletinsEvoke",
-                            "endpoint": `${process.env.WEBHOOKURL}/submit`,
-                            "trigger": trigger
-                        }
-                    },
-                    {
-                        "type": "Action.Submit",
-                        "spacing": "None",
-                        "title": "Create a Bulletin",
-                        "id": "createBulletin",
-                        data: {
-                            "formType": "bulletinCreate",
-                            "endpoint": `${process.env.WEBHOOKURL}/submit`,
-                            "trigger": trigger
-                        }
-                    },
-                    {
-                        "type": "Action.Submit",
-                        "spacing": "None",
-                        "title": "Edit a Bulletin",
-                        "id": "editBulletin",
-                        data: {
-                            "formType": "editBulletinEvoke",
-                            "endpoint": `${process.env.WEBHOOKURL}/submit`,
-                            "trigger": trigger
-                        }
-                    }
-                ]
+                "actions": actionsBlockActionSet
             },
             {
                 "type": "ActionSet",
@@ -207,8 +231,8 @@ async function bulletinCreate(bot, trigger, attachedForm) {
                             },
                             {
                                 "type": "Input.Text",
-                                "placeholder": "example@cisco.com",
-                                "label": "Add Editors to your Bulletin, separated by comma (optional)",
+                                "placeholder": "example@cisco.com, example@cisco.com",
+                                "label": "Add Editors to your Bulletin by email, separated by comma",
                                 "id": "newBulletinEditors"
                             }
                         ]
@@ -237,6 +261,78 @@ async function bulletinCreate(bot, trigger, attachedForm) {
     }
 };
 
+async function bulletinCreateConfirm(bot, trigger, attachedForm, bulletinId) {
+    console.log(`confirming ${bulletinId}`)
+    let bulletinCreateConfirmCard = 
+    {
+        "type": "AdaptiveCard",
+        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+        "version": "1.3",
+        "body": [
+            {
+                "type": "Container",
+                "items": [
+                    {
+                        "type": "TextBlock",
+                        "text": "Your bulletin,",
+                        "wrap": true
+                    },
+                    {
+                        "type": "TextBlock",
+                        "text": `${await getBulletinNameFromId(bulletinId)}`,
+                        "wrap": true,
+                        "weight": "Bolder",
+                        "size": "Medium",
+                        "spacing": "None"
+                    },
+                    {
+                        "type": "TextBlock",
+                        "text": "Has successfully been created!",
+                        "wrap": true,
+                        "spacing": "None"
+                    }
+                ]
+            },
+            {
+                
+                "type": "ActionSet",
+                "spacing": "None",
+                "actions": [
+                    {
+                        "type": "Action.Submit",
+                        "title": "View Bulletin",
+                        "id": "bulletinView",
+                        "data": {
+                            "formType": "bulletinView",
+                            "endpoint": `${process.env.WEBHOOKURL}/submit`,
+                            "trigger": `${trigger}`,
+                            "bulletinId": bulletinId
+                        }
+                    },
+                    {
+                        "type": "Action.Submit",
+                        "title": "Add More Items",
+                        "id": "addBulletinItemsEvoke",
+                        "data": {
+                            "formType": "addBulletinItemsEvoke",
+                            "endpoint": `${process.env.WEBHOOKURL}/submit`,
+                            "trigger": `${trigger}`,
+                            "bulletinId": bulletinId
+                        }
+                    }
+                ]
+            }
+        ]
+    }
+
+    try {
+        await bot.sendCard(bulletinCreateConfirmCard, "Create Confirmation")
+    } catch (e) {
+        console.log(e)
+    }
+
+}
+
 // This function handles a user clicking "Create Bulletin" on a new bulletin card.
 async function initNewBulletin(bot, trigger, attachedForm) {
 
@@ -257,7 +353,7 @@ async function initNewBulletin(bot, trigger, attachedForm) {
         unixLastEdited: unixTimestamp,
         owner: trigger.person.userName,
         editors: [],
-        viewers: [],
+        viewerList: [],
         items: [
             {
                 id: utils.generaterandomString(),
@@ -272,7 +368,7 @@ async function initNewBulletin(bot, trigger, attachedForm) {
     let authData = {};
     if (fs.existsSync(authFilePath)) {
         // Read the authorization file if it exists
-        const authFileContent = fs.readFileSync(authFilePath);
+        const authFileContent = await fs.readFileSync(authFilePath);
         authData = await JSON.parse(authFileContent);
     } else {
         // Create a new authorization object if the file does not exist
@@ -325,26 +421,26 @@ async function initNewBulletin(bot, trigger, attachedForm) {
     // Then, write the bulletin file and authorization file!
     const bulletinJson = `${newBulletinId}.json`;
     const bulletinPath = path.join(__dirname, 'bulletins', bulletinJson);
-    fs.writeFile(bulletinPath, JSON.stringify(bulletinData, null, 2), (err) => {
+    await fs.writeFile(bulletinPath, JSON.stringify(bulletinData, null, 2), (err) => {
         if (err) {
             console.error(`Error writing to file: ${err}`);
             return;
         }
-        console.log(`Bulletin file ${bulletinJson} created successfully.`);
+        
     });
-
+    console.log(`Bulletin file ${bulletinJson} created successfully.`);
     // Write the updated authorization data to the file.
-    fs.writeFile(authFilePath, JSON.stringify(authData, null, 2), (err) => {
+    await fs.writeFile(authFilePath, JSON.stringify(authData, null, 2), (err) => {
         if (err) {
             console.error(`Error writing to file: ${err}`);
             return;
         }
-        console.log(`Authorization file ${authFileName} updated successfully.`);
+        
     });
-
+    console.log(`Authorization file ${authFileName} updated successfully.`);
     // Then return the new bulletinId as a success.
     try {
-        bot.censor(attachedForm.messageId);
+        await bot.censor(attachedForm.messageId);
     } catch (e) {
         console.log(e);
     }
@@ -601,7 +697,7 @@ async function printBulletin(bot, trigger, attachedForm) {
     let deleteAction = 
     {
         "type": "Action.Submit",
-        "title": "Cancel",
+        "title": "Delete Message",
         "data": {
             "formType": "helpDelete"
         }
@@ -880,6 +976,17 @@ async function addBulletinItemsEvoke(bot, trigger, attachedForm) {
                 "actions": [
                     {
                         "type": "Action.Submit",
+                        "title": "Cancel",
+                        "id": "helpDelete",
+                        "data": {
+                            "formType": "helpDelete",
+                            "endpoint": `${process.env.WEBHOOKURL}/submit`,
+                            "trigger": `${trigger}`,
+                            "bulletinId": bulletinId
+                        }
+                    },
+                    {
+                        "type": "Action.Submit",
                         "title": "Add Item",
                         "id": "submitNewBulletinIdItem",
                         "data": {
@@ -1072,6 +1179,14 @@ async function editPermissionsEvoke(bot, trigger, attachedForm) {
         [
             {
                 "type": "Action.Submit",
+                "title": `Cancel`,
+                "data": {
+                    "bulletinId": `${bulletinId}`,
+                    "formType": `helpDelete`
+                }
+            },
+            {
+                "type": "Action.Submit",
                 "title": `Add Editors`,
                 "data": {
                     "bulletinId": `${bulletinId}`,
@@ -1106,6 +1221,14 @@ async function editPermissionsEvoke(bot, trigger, attachedForm) {
                 "data": {
                     "bulletinId": `${bulletinId}`,
                     "formType": `addEditorsEvoke`
+                }
+            },
+            {
+                "type": "Action.Submit",
+                "title": `Add Viewers`,
+                "data": {
+                    "bulletinId": `${bulletinId}`,
+                    "formType": `addViewersEvoke`
                 }
             }
         ]
@@ -1151,6 +1274,140 @@ async function editPermissionsEvoke(bot, trigger, attachedForm) {
     }
 }
 
+async function addViewersEvoke(bot, trigger, attachedForm) {
+    const formData = trigger.attachmentAction.inputs;
+    const bulletinId = formData.bulletinId;
+
+    let addViewersEvokeCard = 
+    {
+        "type": "AdaptiveCard",
+        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+        "version": "1.3",
+        "body": [
+            {
+                "type": "Container",
+                "items": [
+                    {
+                        "type": "TextBlock",
+                        "text": "Add a viewer to your Bulletin:",
+                        "wrap": true
+                    },
+                    {
+                        "type": "TextBlock",
+                        "text": `${await getBulletinNameFromId(bulletinId)}`,
+                        "wrap": true,
+                        "spacing": "None",
+                        "size": "Medium",
+                        "weight": "Bolder"
+                    }
+                ]
+            },
+            {
+                "type": "Container",
+                "items": [
+                    {
+                        "type": "Input.Text",
+                        "placeholder": "example@cisco.com",
+                        "label": "Type your additional viewer\''s Webex email:",
+                        "id": "newViewerStringInput"
+                    }
+                ]
+            },
+            {
+                "type": "ActionSet",
+                "spacing": "None",
+                "actions": [
+                    {
+                        "type": "Action.Submit",
+                        "title": "Add Viewer",
+                        "id": "newViewerString",
+                        "data": {
+                            "formType": "newViewerString",
+                            "endpoint": `${process.env.WEBHOOKURL}/submit`,
+                            "trigger": `${trigger}`,
+                            "bulletinId": bulletinId
+                        }
+                    },
+                    {
+                        "type": "Action.Submit",
+                        "title": "Add Viewer and Add Another Viewer",
+                        "id": "newViewerStringandContinue",
+                        "data": {
+                            "formType": "newViewerStringandContinue",
+                            "endpoint": `${process.env.WEBHOOKURL}/submit`,
+                            "trigger": `${trigger}`,
+                            "bulletinId": bulletinId
+                        }
+                    }
+                ]
+            }
+        ]
+    }
+
+    try {
+        await bot.censor(attachedForm.messageId);
+        await bot.sendCard(addViewersEvokeCard, "Add Viewers Card");
+    } catch (e) {
+        console.log(e);
+    }
+}
+
+async function addViewerToBulletin(bot, trigger, attachedForm) {
+    const formData = trigger.attachmentAction.inputs;
+    const bulletinId = formData.bulletinId;
+    const newViewer = formData.newViewerStringInput;
+
+    
+    // Add them to the auth file
+    // Opening the authorization file
+    const authFile = path.join(__dirname, 'authorization', `bulletinAuthorizations.json`);
+    let authDataObject = {};
+    if (fs.existsSync(authFile)) {
+        const authData = fs.readFileSync(authFile);
+        authDataObject = await JSON.parse(authData);
+    }
+    else {
+        return;
+    }
+
+    // Checking that the inputted viewer is a valid email address
+    const isValidEmail = /^[\w-.]+@([\w-]+\.)+[\w-]{2,}$/g.test(newViewer);
+    if (isValidEmail) {
+        // If it is, then we push the new object into the auth file.
+        let newViewerObject = 
+        {
+            "bulletinId": bulletinId,
+            "lastViewed": utils.getUnixTimestamp()
+        };
+
+        if (authDataObject.Viewer[newViewer]) {
+            // Check if bulletinId already exists in the array
+            const bulletinExists = authDataObject.Viewer[newViewer].some(
+                (obj) => obj.bulletinId === bulletinId
+            );
+            if (bulletinExists) {
+                console.log(`The bulletin with ID ${bulletinId} already exists for ${newViewer}`);
+                return;
+            } else {
+                authDataObject.Viewer[newViewer].push(newViewerObject);
+                console.log(`The bulletin with ID ${bulletinId} has been added for ${newViewer}`);
+            }
+        }
+        else {
+            authDataObject.Viewer[newViewer] = [newViewerObject]
+        }
+        // Then write back to the file
+        try {fs.writeFileSync(authFile, JSON.stringify(authDataObject,null,2));} catch (e) {console.log(e)}
+    }
+    else {
+        bot.say("Sorry! That wasn't a valid email. Please try again. Here's what you typed: " + newViewer);
+        return;
+    }
+
+    bot.say(`Viewer ${newViewer} successfully added to bulletin!`)
+    
+}
+
 async function addEditorsEvoke(bot, trigger, attachedForm) {
     const formData = trigger.attachmentAction.inputs;
     const bulletinId = formData.bulletinId;
@@ -1185,7 +1442,7 @@ async function addEditorsEvoke(bot, trigger, attachedForm) {
                     {
                         "type": "Input.Text",
                         "placeholder": "example@cisco.com",
-                        "label": "Type your authorized editor's Webex email:",
+                        "label": "Type your authorized editor\'s Webex email:",
                         "id": "newEditorStringInput"
                     }
                 ]
@@ -1287,7 +1544,7 @@ async function addEditorToBulletin(bot, trigger, attachedForm) {
 async function removeEditorsFromBulletin(bot, trigger, attachedForm) {
     const formData = trigger.attachmentAction.inputs;
     const bulletinId = formData.bulletinId;
-    const removeEditorsArray = formData.bulletinEditorsChoiceSet;
+    const removeEditorsArray = formData.bulletinEditorsChoiceSet.split(',');
 
     let bulletinDataObject = {};
     const bulletinFile = path.join(__dirname, 'bulletins', `${bulletinId}.json`);
@@ -1316,7 +1573,15 @@ async function removeEditorsFromBulletin(bot, trigger, attachedForm) {
     }
 
     // Then filtering
-    authDataObject.Editor[email] = authDataObject.Editor[email].filter((bulletinIds) => !removeEditorsArray.includes(bulletinIds));
+    for (let i = 0; i < removeEditorsArray.length; i++) {
+        const editorEmail = removeEditorsArray[i];
+        if (authDataObject.Editor.hasOwnProperty(editorEmail)) {
+          authDataObject.Editor[editorEmail] = authDataObject.Editor[editorEmail].filter((bulletin) => bulletin !== bulletinId);
+        }
+      }
+    
+    try {fs.writeFileSync(authFile, JSON.stringify(authDataObject,null,2));} catch (e) {console.log(e)}
+
 }
 
 async function destroyBulletinEvoke(bot, trigger, attachedForm) {
@@ -1654,5 +1919,8 @@ module.exports = {
     removeEditorsFromBulletin: removeEditorsFromBulletin,
     destroyBulletinEvoke: destroyBulletinEvoke,
     nukeBulletin: nukeBulletin,
-    viewAllBulletinsEvoke: viewAllBulletinsEvoke
+    viewAllBulletinsEvoke: viewAllBulletinsEvoke,
+    bulletinCreateConfirm: bulletinCreateConfirm,
+    addViewersEvoke: addViewersEvoke,
+    addViewerToBulletin: addViewerToBulletin
 };

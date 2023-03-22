@@ -1,0 +1,18 @@
+{
+  "title": "This is my test bulletin!",
+  "unixLastEdited": 1679452127,
+  "owner": "gaberami@cisco.com",
+  "editors": [
+    "test@cisco.com"
+  ],
+  "viewerList": [
+    "gaberami@cisco.com",
+    "gabestestbot@webex.bot"
+  ],
+  "items": [
+    {
+      "id": "3f27c274f1",
+      "content": "Where hopefully I can do everything that I'm allowed to do in a bulletin!"
+    }
+  ]
+}
