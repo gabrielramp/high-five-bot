@@ -12,21 +12,21 @@ async function bulletinEvoke(bot, trigger) {
     let cardTitle = 
     {
         "type": "TextBlock",
-        "text": "Bulletin 📜",
+        "text": "Bulletin📜",
         "wrap": true,
-        "size": "Medium",
+        "size": "Large",
         "weight": "Bolder"
     };
     bulletinEvokeBodyBlock.push(cardTitle);
 
-    let flavorText = 
+    /*let flavorText = 
     {
         "type": "TextBlock",
         "text": "Save important information!",
         "wrap": true,
         "spacing": "None"
     };
-    bulletinEvokeBodyBlock.push(flavorText);
+    bulletinEvokeBodyBlock.push(flavorText);*/
 
     // Building the "Quickly View your Bulletins" block
     // Get the most recently viewed bulletins for this user
@@ -35,7 +35,7 @@ async function bulletinEvoke(bot, trigger) {
     var hasTopBulletins = 0;
     let topActions = [];
     // if topViewed is not empty
-    if (topViewedBulletins != null) {
+    if (topViewedBulletins != null && topViewedBulletins.length > 0) {
         hasTopBulletins = 1;
         topViewedBulletins.forEach(([bulletinId, bulletinTitle]) => {
             let singleAction = 
@@ -52,6 +52,7 @@ async function bulletinEvoke(bot, trigger) {
     }
 
     let topBulletinsBlock = {};
+    console.log(`DEBUG hasTopBulletins ${hasTopBulletins}`)
     if (hasTopBulletins != 0) {
         topBulletinsBlock = 
         {
@@ -60,16 +61,22 @@ async function bulletinEvoke(bot, trigger) {
             "items": [
                 {
                     "type": "TextBlock",
-                    "text": "Quickly View Your Bulletins:",
+                    "text": "Quickly view your top bulletins:",
                     "wrap": true,
                     "spacing": "Medium",
                     "$when": "${$hasTopBulletins != 0}"
                 },
                 {
-                    "type": "ActionSet",
+                    "type": "Container",
                     "spacing": "None",
-                    "actions": topActions,
-                    "height": "stretch"
+                    "items": [
+                        {
+                            "type": "ActionSet",
+                            "spacing": "None",
+                            "actions": topActions,
+                            "height": "stretch"
+                        }
+                    ]
                 }
             ]
         };
@@ -145,7 +152,7 @@ async function bulletinEvoke(bot, trigger) {
                 "type": "TextBlock",
                 "text": actionsBlockText,
                 "wrap": true,
-                "spacing": "Small"
+                "spacing": "Medium"
             },
             {
                 "type": "ActionSet",
@@ -154,7 +161,7 @@ async function bulletinEvoke(bot, trigger) {
             },
             {
                 "type": "ActionSet",
-                "spacing": "Small",
+                "spacing": "None",
                 "actions": [
                     {
                         "type": "Action.Submit",
@@ -686,6 +693,7 @@ async function printBulletin(bot, trigger, attachedForm) {
             let singleBulletinItem = 
             {
             "type": "TextBlock",
+            "size": "Medium",
             "text": `• ${bulletinDataObject.items[i].content}`,
             "wrap": true
             }
@@ -697,7 +705,7 @@ async function printBulletin(bot, trigger, attachedForm) {
     let deleteAction = 
     {
         "type": "Action.Submit",
-        "title": "Delete Message",
+        "title": "Delete This Message",
         "data": {
             "formType": "helpDelete"
         }
@@ -743,9 +751,13 @@ async function printBulletin(bot, trigger, attachedForm) {
             {
                 "type": "Container",
                 "items": viewBulletinItems
+            },
+            {
+                "type": "ActionSet",
+                "spacing": "Small",
+                "actions": viewActions
             }
-        ],
-        "actions": viewActions
+        ]
     };
 
     try {
@@ -828,8 +840,16 @@ async function editBulletinId(bot, trigger, attachedForm) {
                 "items": [
                     {
                         "type": "TextBlock",
-                        "text": `Editing:\n${bulletinDataObject.title}`,
+                        "text": `Editing Bulletin 📝`,
                         "wrap": true,
+                        "size": "Large",
+                        "weight": "Bolder"
+                    },
+                    {
+                        "type": "TextBlock",
+                        "text": `${bulletinDataObject.title}`,
+                        "wrap": true,
+                        "spacing": "Medium",
                         "size": "Medium",
                         "weight": "Bolder"
                     }
@@ -837,7 +857,7 @@ async function editBulletinId(bot, trigger, attachedForm) {
             },
             {
                 "type": "Container",
-                "spacing": "Small",
+                "spacing": "None",
                 "items": [
                    {
                     "type": "Input.ChoiceSet",
@@ -851,7 +871,7 @@ async function editBulletinId(bot, trigger, attachedForm) {
             },
             {
                 "type": "ActionSet",
-                "spacing": "None",
+                "spacing": "Small",
                 "actions": [
                     {
                         "type": "Action.Submit",
@@ -946,14 +966,16 @@ async function addBulletinItemsEvoke(bot, trigger, attachedForm) {
                 "items": [
                     {
                         "type": "TextBlock",
-                        "text": "Adding an item for:",
-                        "wrap": true
+                        "text": "Add an Item 📝",
+                        "wrap": true,
+                        "weight": "Bolder",
+                        "size": "Large"
                     },
                     {
                         "type": "TextBlock",
                         "text": `${await getBulletinNameFromId(bulletinId)}`,
                         "wrap": true,
-                        "spacing": "None",
+                        "spacing": "Medium",
                         "size": "Medium",
                         "weight": "Bolder"
                     }
@@ -961,6 +983,7 @@ async function addBulletinItemsEvoke(bot, trigger, attachedForm) {
             },
             {
                 "type": "Container",
+                "spacing": "Small",
                 "items": [
                     {
                         "type": "Input.Text",
@@ -972,7 +995,7 @@ async function addBulletinItemsEvoke(bot, trigger, attachedForm) {
             },
             {
                 "type": "ActionSet",
-                "spacing": "None",
+                "spacing": "Medium",
                 "actions": [
                     {
                         "type": "Action.Submit",

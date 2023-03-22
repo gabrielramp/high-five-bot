@@ -32,6 +32,10 @@ async function getPersonDetails(personId) {
     }
 }
 
+async function getMentionedPeople(roomId, messageId) {
+  
+}
+
 // Here we log our commands for metrics!
 async function logCommandEvoke(commandId) {
   let commandLogDataObject = {};

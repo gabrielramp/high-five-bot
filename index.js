@@ -307,9 +307,9 @@ framework.hears(
             // Here's where it's different. We're using the Axios library to make an HTTP request to the Webex API for a person's details.
             // You can find this specific call here: https://developer.webex.com/docs/api/v1/people/get-person-details
             console.log("\n\nTrying API call with Axios");
-            axios.get(`https://webexapis.com/v1/people/${member.personId}?callingData=true`, httpauth)
+            await axios.get(`https://webexapis.com/v1/people/${member.personId}?callingData=true`, httpauth)
               // Once we get a response,
-              .then(response => {
+              .then(async response => {
 
                 // Here we find and put a person's data in these variables. The return is predictable as per the API documentation.
                 //console.log(`Axios HTTP Request: ${JSON.stringify(response.data, null, 2)}`);
@@ -318,21 +318,66 @@ framework.hears(
                 var avatarurl = response.data.avatar;
 
                 // And then we build the card as usual!
-                birthdaycard.body[0].columns[0].items[0].text = firstname;
-                birthdaycard.body[0].columns[0].items[1].url = avatarurl
-                ? avatarurl
-                : `${process.env.WEBHOOKURL}/missing-avatar.jpg`;
+                /*birthdaycard.body[0].columns[0].items[0].text = firstname;
+                birthdaycard.body[0].columns[0].items[1].url = avatarurl;
                 birthdaycard.body[0].columns[0].items[2].text = "HAPPY BIRTHDAY!";
-                birthdaycard.body[0].columns[0].items[3].text = "🎂🎂🎂";
+                birthdaycard.body[0].columns[0].items[3].text = "🎂🎂🎂";*/
 
-                console.log("Attempting to send the card...");
+                let newBirthdayCard = 
+                {
+                  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                  "type": "AdaptiveCard",
+                  "version": "1.3",
+                  "body": [
+                    {
+                      "type": "ColumnSet",
+                      "columns": [
+                        {
+                          "type": "Column",
+                          //"width": "5",
+                          "items": [
+                            {
+                              "type": "TextBlock",
+                              "text": `${firstname}`,
+                              "size": "large",
+                              "horizontalAlignment": "Center",
+                              "weight": "Bolder"
+                            },
+                            {
+                              "type": "Image",
+                              "url": avatarurl,
+                              "size": "large",
+                              "horizontalAlignment": "Center",
+                              "style": "person"
+                            },
+                            {
+                              "type": "TextBlock",
+                              "text": "HAPPY BIRTHDAY!",
+                              "horizontalAlignment": "Center",
+                              "size": "ExtraLarge"
+                            },
+                            {
+                              "type": "TextBlock",
+                              "text": "🎂🎂🎂",
+                              "horizontalAlignment": "Center",
+                              "size": "ExtraLarge"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ],
+                  "backgroundImage": {
+                    "url": "https://github.com/gabrielramp/high-five-bot/blob/experimental/resources/birthdaybackground.png"
+                  }
+                }
+                
+
+                console.log(`Attempting to send the card... with attributes ${firstname} and ${avatarurl}`);
 
                 // Sending the card!
-                bot.sendCard(
-                  birthdaycard,
-                  // Error message if applicable.
-                  "[Birthday Card]"
-                )
+                await bot.sendCard(newBirthdayCard, "birthdaycard")
+                
               })
               .catch(error => {
                 console.log("ERROR FOUND");
