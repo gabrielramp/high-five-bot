@@ -5,3 +5,5 @@ images
 submissions
 authorization/bulletinAuthorizations.JSON
 .env
+logs
+bulletins

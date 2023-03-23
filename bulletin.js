@@ -213,10 +213,18 @@ async function bulletinCreate(bot, trigger, attachedForm) {
                 "items": [
                     {
                         "type": "TextBlock",
-                        "text": "Create a Bulletin",
+                        "text": "Create a Bulletin 📜",
                         "wrap": true,
-                        "size": "Medium",
+                        "size": "Large",
                         "weight": "Bolder"
+                    },
+                    {
+                        "type": "TextBlock",
+                        "text": "Everyone in this Space will automatically be added as viewers.",
+                        "wrap": true,
+                        "size": "Small",
+                        "weight": "Bolder",
+                        "spacing": "None"
                     },
                     {
                         "type": "Container",
@@ -1202,14 +1210,6 @@ async function editPermissionsEvoke(bot, trigger, attachedForm) {
         [
             {
                 "type": "Action.Submit",
-                "title": `Cancel`,
-                "data": {
-                    "bulletinId": `${bulletinId}`,
-                    "formType": `helpDelete`
-                }
-            },
-            {
-                "type": "Action.Submit",
                 "title": `Add Editors`,
                 "data": {
                     "bulletinId": `${bulletinId}`,
@@ -1223,21 +1223,21 @@ async function editPermissionsEvoke(bot, trigger, attachedForm) {
                     "bulletinId": `${bulletinId}`,
                     "formType": `removeSelectedEditors`
                 }
+            },
+            {
+                "type": "Action.Submit",
+                "title": `Add Viewers`,
+                "data": {
+                    "bulletinId": `${bulletinId}`,
+                    "formType": `addViewersEvoke`
+                }
             }
         ]
     }
     else {
-        editorsList = { "type": "Container", "items": [{"type": "TextBlock", "text": "There are currently no additional editors for this Bulletin."}]};
+        editorsList = { "type": "Container", "spacing": "None", "items": [{"type": "TextBlock", "text": "There are currently no additional editors for this Bulletin."}]};
         actionsSetList = 
         [
-            {
-                "type": "Action.Submit",
-                "title": `Cancel`,
-                "data": {
-                    "bulletinId": `${bulletinId}`,
-                    "formType": `helpDelete`
-                }
-            },
             {
                 "type": "Action.Submit",
                 "title": `Add Editors`,
@@ -1268,15 +1268,17 @@ async function editPermissionsEvoke(bot, trigger, attachedForm) {
                 "items": [
                     {
                         "type": "TextBlock",
-                        "text": `Editing Permissions for your Bulletin:`,
-                        "wrap": true
+                        "text": `Edit Permissions 📝`,
+                        "wrap": true,
+                        "size": "Large",
+                        "weight": "Bolder"
                     },
                     {
                         "type": "TextBlock",
                         "text": `${await getBulletinNameFromId(bulletinId)}`,
                         "weight": "Bolder",
                         "size": "Medium",
-                        "spacing": "None"
+                        "spacing": "Medium"
                     }
                 ]
             },
@@ -1285,6 +1287,16 @@ async function editPermissionsEvoke(bot, trigger, attachedForm) {
                 "type": "ActionSet",
                 "spacing": "Small",
                 "actions": actionsSetList
+            }
+        ],
+        "actions": [
+            {
+                "type": "Action.Submit",
+                "title": `Cancel`,
+                "data": {
+                    "bulletinId": `${bulletinId}`,
+                    "formType": `helpDelete`
+                }
             }
         ]
     }
@@ -1312,14 +1324,16 @@ async function addViewersEvoke(bot, trigger, attachedForm) {
                 "items": [
                     {
                         "type": "TextBlock",
-                        "text": "Add a viewer to your Bulletin:",
-                        "wrap": true
+                        "text": `Add a Viewer 📝`,
+                        "wrap": true,
+                        "size": "Large",
+                        "weight": "Bolder"
                     },
                     {
                         "type": "TextBlock",
                         "text": `${await getBulletinNameFromId(bulletinId)}`,
                         "wrap": true,
-                        "spacing": "None",
+                        "spacing": "Medium",
                         "size": "Medium",
                         "weight": "Bolder"
                     }
@@ -1446,14 +1460,16 @@ async function addEditorsEvoke(bot, trigger, attachedForm) {
                 "items": [
                     {
                         "type": "TextBlock",
-                        "text": "Add an editor to your Bulletin:",
-                        "wrap": true
+                        "text": "Add an Editor 📝",
+                        "wrap": true,
+                        "size": "Large",
+                        "weight": "Bolder"
                     },
                     {
                         "type": "TextBlock",
                         "text": `${await getBulletinNameFromId(bulletinId)}`,
                         "wrap": true,
-                        "spacing": "None",
+                        "spacing": "Medium",
                         "size": "Medium",
                         "weight": "Bolder"
                     }
@@ -1850,18 +1866,14 @@ async function viewAllBulletinsEvoke(bot, trigger, attachedForm) {
         "body": [
             {
                 "type": "TextBlock",
-                "text": "View a Bulletin",
-            },
-            {
-                "type": "TextBlock",
                 "spacing": "None",
-                "text": "Select a Bulletin to View:",
-                "size": "Medium",
+                "text": "Select a Bulletin to View 📜",
+                "size": "Large",
                 "weight": "Bolder"
             },
             {
                 "type": "Container",
-                "spacing": "Medium",
+                "spacing": "Small",
                 "items": allActionSets
             }
         ]

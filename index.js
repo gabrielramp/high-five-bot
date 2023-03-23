@@ -94,6 +94,20 @@ const webex = Webex.init({
 });
 
 framework.hears (
+  "devmentiontest",
+  async (bot, trigger) => {
+    console.log(`DEBUG: DEVMENTIONTEST: Trigger: ${JSON.stringify(trigger,null,2)}`)
+    console.log(`DEBUG: DEVMENTIONTEST: Trigger message: ${JSON.stringify(trigger.message,null,2)}`)
+    console.log(`DEBUG: DEVMENTIONTEST: Trigger message mentionedPeople:` + trigger.message.mentionedPeople);
+
+    for (let i = 0; i < trigger.message.mentionedPeople.length; i++) {
+      console.log(`DEBUG: DEVMENTIONTEST: Mention ${i} name: ${JSON.stringify(await utils.getPersonDetails(trigger.message.mentionedPeople[i]),null,2)}`)
+    }
+  },
+  0
+)
+
+framework.hears (
   "devtestmessaging",
   async (bot, trigger) => {
     try {utils.logCommandEvoke("devtestmessaging");} catch (e) {console.log(e)}
@@ -132,17 +146,7 @@ framework.hears (
     bulletin.bulletinEvoke(bot, trigger);
   },
   0
-)
-
-/*let dummycard = require ("./templates/about.json");
-framework.hears (
-  "testcard",
-  (bot) => {
-    bot.sendCard(testcard, "test card");
-  },
-  0
-)*/
-                   
+)                  
                      
 // 'help' command
 framework.hears (
@@ -1876,7 +1880,7 @@ function highfivehelp(bot) {
                                       "inlines": [
                                           {
                                               "type": "TextRun",
-                                              "text": "📃 freeform",
+                                              "text": "📜 bulletin",
                                               "fontType": "Monospace",
                                               "weight": "bolder"
                                           }
@@ -1887,7 +1891,7 @@ function highfivehelp(bot) {
                                       "inlines": [
                                           {
                                               "type": "TextRun",
-                                              "text": "Create a freeform question for your Space to answer. Answers have a limit of 500 characters."
+                                              "text": "Create and view bulletins! This powerful feature lets you put all your important information in one place!"
                                           }
                                       ],
                                       "spacing": "None"
@@ -1909,6 +1913,27 @@ function highfivehelp(bot) {
                                           {
                                               "type": "TextRun",
                                               "text": "Create a poll! Command inspired by Pollbot--they're not open-source, though!"
+                                          }
+                                      ],
+                                      "spacing": "None"
+                                  },
+                                  {
+                                      "type": "RichTextBlock",
+                                      "inlines": [
+                                          {
+                                              "type": "TextRun",
+                                              "text": "📃 freeform",
+                                              "fontType": "Monospace",
+                                              "weight": "bolder"
+                                          }
+                                      ]
+                                  },
+                                  {
+                                      "type": "RichTextBlock",
+                                      "inlines": [
+                                          {
+                                              "type": "TextRun",
+                                              "text": "Create a freeform question for your Space to answer. Answers have a limit of 500 characters."
                                           }
                                       ],
                                       "spacing": "None"
