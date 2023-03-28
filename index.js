@@ -93,6 +93,7 @@ const webex = Webex.init({
   }
 });
 
+// Tests mentionedPeople functionality from trigger
 framework.hears (
   "devmentiontest",
   async (bot, trigger) => {
@@ -100,9 +101,15 @@ framework.hears (
     console.log(`DEBUG: DEVMENTIONTEST: Trigger message: ${JSON.stringify(trigger.message,null,2)}`)
     console.log(`DEBUG: DEVMENTIONTEST: Trigger message mentionedPeople:` + trigger.message.mentionedPeople);
 
-    for (let i = 0; i < trigger.message.mentionedPeople.length; i++) {
-      console.log(`DEBUG: DEVMENTIONTEST: Mention ${i} name: ${JSON.stringify(await utils.getPersonDetails(trigger.message.mentionedPeople[i]),null,2)}`)
+    if (trigger.message.mentionedPeople != null) {
+      for (let i = 0; i < trigger.message.mentionedPeople.length; i++) {
+        console.log(`DEBUG: DEVMENTIONTEST: Mention ${i} name: ${JSON.stringify(await utils.getPersonDetails(trigger.message.mentionedPeople[i]),null,2)}`)
+      }
     }
+    else {
+      console.log("DEBUG: devmentiontest: No mentionedPeople.")
+    }
+
   },
   0
 )
@@ -216,178 +223,184 @@ framework.hears (
 
 // 'highfivecard' command: Create a High Five card for a user, specified by email
 // Pull the High Five JSON Card Template
-const highfivecard = require('./templates/highfivecard.json');
 framework.hears(
   "highfivecard",
-  (bot, trigger) => {
+  async (bot, trigger) => {
+    // Metric logging
     try {utils.logCommandEvoke("highfivecard");} catch (e) {console.log(e)}
 
-    // Logging for debug weeeee
-    console.log
-    ("\n\nHigh Five Received:",
-    "\nMessage:", trigger.message.text,
-    "\nArgs:", trigger.args,
-    "\nLength:", trigger.args.length,
-    "\nIndex 1:", trigger.args[1],
-    "\nDisplay Name:", trigger.person.displayName,
-    "\nEmail:", trigger.person.email, "\n");
+    if (trigger.message.mentionedPeople != null) {
+      for (let i = 0; i < trigger.message.mentionedPeople.length; i++) {
+        // Skipping the bot itself lol
+        if (bot.membership.personId == trigger.message.mentionedPeople[i]) { 
+          console.log('skipping myself')
+          continue; 
+        }
+        let tempPerson = await utils.getPersonDetails(trigger.message.mentionedPeople[i]);
+        console.log(`DEBUG: highfivecard: Mention ${i} name: ${tempPerson.displayName}`)
+        console.log(`DEBUG: highfivecard: Mention ${i} avatar: ${tempPerson.avatar}`)
 
-    // First we'll get a list of users for the space the command has been triggered in.
-    bot.webex.memberships.list({ roomId: bot.room.id })
-    .then(async (memberships) => {
-      // Then, we'll loop through all of the mentioned users (arguments 1 through inf).
-
-      // Congratulate recipients in the chat
-      bot.say("Congratulations to our High Five recipients!");
-
-      // Initialize first iterator of trigger list
-      console.log("Looping for members mentioned...");
-        
-      // Then, loop through all members to match the string index
-      for (let i = 1; i < trigger.args.length; i++) {
-        for (const member of memberships.items) {
-          
-          console.log(`Current member: ${member.personEmail}, Request: ${trigger.args[i]}`)
-
-          // If a member is found with the specified email
-          if (member.personEmail == trigger.args[i]) {
-
-            // Then we'll parse their email to find their username
-            cleanedname = member.personEmail.split('@')[0];
-            
-            // More debug :^)
-            console.log("Match found.\nCreating a card for", member.personEmail, "\nID", member.personId, "\nDisplay Name", cleanedname);
-
-            // And now we make the card for them!
-            // Finding their image in files...
-            personimage = `${config.webhookUrl}/${cleanedname}.jpg`
-
-            // Setting the first text block as person's name
-            highfivecard.body[0].columns[0].items[0].text = member.personDisplayName;
-
-            // Setting their CEC image.
-            highfivecard.body[0].columns[0].items[1].url = personimage
-            ? personimage
-            : `${config.webhookUrl}/missing-avatar.jpg`;
-
-            // Emoji for coolness points
-            highfivecard.body[0].columns[0].items[2].text = "🎉";
-
-            // Sending the card!
-            await bot.sendCard(
-              highfivecard,
-              // Error message if applicable.
-              "[High Five Card]"
-            )
-            console.log("Sent card. Continuing...\n")
+        let highfivecard = 
+        {
+          "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+          "type": "AdaptiveCard",
+          "version": "1.0",
+          "body": [
+          {
+              "type": "ColumnSet",
+              "columns": [
+              {
+                  "type": "Column",
+                  "items": [
+                  {
+                      "type": "TextBlock",
+                      "text": tempPerson.displayName,
+                      "size": "large",
+                      "horizontalAlignment": "Center",
+                      "weight": "Bolder"
+                  },
+                  {
+                      "type": "Image",
+                      "url": tempPerson.avatar,
+                      "size": "large",
+                      "horizontalAlignment": "Center",
+                      "style": "person"
+                  },
+                  {
+                      "type": "TextBlock",
+                      "text": "🎉",
+                      "horizontalAlignment": "Center",
+                      "size": "ExtraLarge"
+                  }
+                  ]
+              }
+              ]
           }
-        };
-      }; 
-      console.log("Exited card loop.");
-    });
+          ],
+          "backgroundImage": {
+          "url": "https://github.com/gabrielramp/high-five-bot/blob/f70792944fd5b96585c041ec18adfd53a74722d2/resources/highfivebackground.png?raw=true",
+          "fillMode": "RepeatHorizontally"
+          }
+      }      
+
+      try {
+        await bot.sendCard(highfivecard, "High Five Card")
+      }   catch (e) {
+        console.log(e);
+      }
+
+      }
+    }
+    else {
+      console.log("DEBUG: highfivecard: No mentionedPeople.")
+      await bot.say("To use the 'highfivecard' command, @mention the people you'd like to recognize to in the same message! Use the 'help' command for more user instruction.")
+    }
   },
   "**highfivecard**: Syntax: [@mention highfive [*recipient-email1*]] (support multiple emails). Creates a High Five card for a user!",
   0 // Command Priority
 );
+
+// Tests mentionedPeople array functionality from Trigger on hears()
+framework.hears (
+  "devmentiontest",
+  async (bot, trigger) => {
+    console.log(`DEBUG: DEVMENTIONTEST: Trigger: ${JSON.stringify(trigger,null,2)}`)
+    console.log(`DEBUG: DEVMENTIONTEST: Trigger message: ${JSON.stringify(trigger.message,null,2)}`)
+    console.log(`DEBUG: DEVMENTIONTEST: Trigger message mentionedPeople:` + trigger.message.mentionedPeople);
+
+    if (trigger.message.mentionedPeople != null) {
+      for (let i = 0; i < trigger.message.mentionedPeople.length; i++) {
+        console.log(`DEBUG: DEVMENTIONTEST: Mention ${i} name: ${JSON.stringify(await utils.getPersonDetails(trigger.message.mentionedPeople[i]),null,2)}`)
+      }
+    }
+    else {
+      console.log("DEBUG: devmentiontest: No mentionedPeople.")
+    }
+
+  },
+  0
+)
 
 // 'birthdaycard' command: Create a birthday card for someone! Specified by email.
 // This command is almost a copy-paste of the highfive command, with the addition of an HTTP request to the Webex API to return a user's details which contains their Webex profile picture URL.
 const birthdaycard = require('./templates/birthdaycard.json');
 framework.hears(
   "birthdaycard",
-  (bot, trigger) => {
+  async (bot, trigger) => {
+    // Metric logging
     try {utils.logCommandEvoke("birthdaycard");} catch (e) {console.log(e)}
 
-    // The rest of this is the same as the 'highfive' function except the HTTP GET. Look up there to see how this works!
-    bot.webex.memberships.list({ roomId: bot.room.id })
-    .then(async (memberships) => {
-      for (let i = 1; i < trigger.args.length; i++) {
-        for (const member of memberships.items) {
-          if (member.personEmail == trigger.args[i]) {
+    if (trigger.message.mentionedPeople != null) {
+      for (let i = 0; i < trigger.message.mentionedPeople.length; i++) {
+        // Skipping the bot itself lol
+        if (bot.membership.personId == trigger.message.mentionedPeople[i]) { 
+          console.log('skipping myself')
+          continue; 
+        }
+        let tempPerson = await utils.getPersonDetails(trigger.message.mentionedPeople[i]);
+        console.log(`DEBUG: birthdaycard: Mention ${i} name: ${tempPerson.displayName}`)
+        console.log(`DEBUG: birthdaycard: Mention ${i} avatar: ${tempPerson.avatar}`)
 
-            // Getting the name of email without the domain
-            cleanedname = member.personEmail.split('@')[0];
-
-            // Here's where it's different. We're using the Axios library to make an HTTP request to the Webex API for a person's details.
-            // You can find this specific call here: https://developer.webex.com/docs/api/v1/people/get-person-details
-            console.log("\n\nTrying API call with Axios");
-            await axios.get(`https://webexapis.com/v1/people/${member.personId}?callingData=true`, httpauth)
-              // Once we get a response,
-              .then(async response => {
-
-                // Here we find and put a person's data in these variables. The return is predictable as per the API documentation.
-                //console.log(`Axios HTTP Request: ${JSON.stringify(response.data, null, 2)}`);
-                console.log("Avatar URL:", response.data.avatar);
-                var firstname = response.data.firstName;
-                var avatarurl = response.data.avatar;
-
-                let newBirthdayCard = 
+        let newBirthdayCard = 
+        {
+          "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+          "type": "AdaptiveCard",
+          "version": "1.3",
+          "body": [
+            {
+              "type": "ColumnSet",
+              "columns": [
                 {
-                  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
-                  "type": "AdaptiveCard",
-                  "version": "1.3",
-                  "body": [
+                  "type": "Column",
+                  "items": [
                     {
-                      "type": "ColumnSet",
-                      "columns": [
-                        {
-                          "type": "Column",
-                          //"width": "5",
-                          "items": [
-                            {
-                              "type": "TextBlock",
-                              "text": `${firstname}`,
-                              "size": "large",
-                              "horizontalAlignment": "Center",
-                              "weight": "Bolder"
-                            },
-                            {
-                              "type": "Image",
-                              "url": avatarurl,
-                              "size": "large",
-                              "horizontalAlignment": "Center",
-                              "style": "person"
-                            },
-                            {
-                              "type": "TextBlock",
-                              "text": "HAPPY BIRTHDAY!",
-                              "horizontalAlignment": "Center",
-                              "size": "ExtraLarge"
-                            },
-                            {
-                              "type": "TextBlock",
-                              "text": "🎂🎂🎂",
-                              "horizontalAlignment": "Center",
-                              "size": "ExtraLarge"
-                            }
-                          ]
-                        }
-                      ]
+                      "type": "TextBlock",
+                      "text": `${tempPerson.displayName}`,
+                      "size": "large",
+                      "horizontalAlignment": "Center",
+                      "weight": "Bolder"
+                    },
+                    {
+                      "type": "Image",
+                      "url": tempPerson.avatar,
+                      "size": "large",
+                      "horizontalAlignment": "Center",
+                      "style": "person"
+                    },
+                    {
+                      "type": "TextBlock",
+                      "text": "HAPPY BIRTHDAY!",
+                      "horizontalAlignment": "Center",
+                      "size": "ExtraLarge"
+                    },
+                    {
+                      "type": "TextBlock",
+                      "text": "🎂🎂🎂",
+                      "horizontalAlignment": "Center",
+                      "size": "ExtraLarge"
                     }
-                  ],
-                  "backgroundImage": {
-                    "url": "https://github.com/gabrielramp/high-five-bot/blob/98c2884f7b8b5eb52daa9a5510f233aadd931ca9/resources/birthdaybackground.png?raw=true"
-                  }
+                  ]
                 }
-                
-
-                console.log(`Attempting to send the card... with attributes ${firstname} and ${avatarurl}`);
-
-                // Sending the card!
-                await bot.sendCard(newBirthdayCard, "birthdaycard")
-                
-              })
-              .catch(error => {
-                console.log("ERROR FOUND");
-                console.log(error);
-              });
-            // Once the request is over and we cut the connection, we can't use the data outside of that .then function. So we're out!
-            console.log("Sent card. Continuing...\n");
+              ]
+            }
+          ],
+          "backgroundImage": {
+            "url": "https://github.com/gabrielramp/high-five-bot/blob/98c2884f7b8b5eb52daa9a5510f233aadd931ca9/resources/birthdaybackground.png?raw=true"
           }
-        };
-      }; 
-      console.log("Exited birthday card loop.");
-    });
+        }
+
+        try {
+          await bot.sendCard(newBirthdayCard, "Birthday Card")
+        }   catch (e) {
+          console.log(e);
+        }
+
+      }
+    }
+    else {
+      console.log("DEBUG: birthdaycard: No mentionedPeople.")
+      await bot.say("To use the 'birthdaycard' command, @mention the people you'd like to wish Happy Birthday to in the same message  ! Use the 'help' command for more user instruction.")
+    }
   },
   "**birthdaycard**: Syntax: [@mention birthdaycard *recipient-email1*]. Highlight the birthday person with a virtual card!",
   0,
@@ -919,51 +932,52 @@ framework.on('attachmentAction', async (bot, trigger) => {
         });
 
         // And finally, we will create a block of answers that users who chose the 'Other' options specified.
-        const otherAnswerBlock = {
-          type: "Container",
-          sacing: "Small",
-          items: []
-        };
-
-        const otherAnswerTitle = {
-          type: "TextBlock",
-          text: `Other: ${Object.keys(otherAnswerArray).length}`,
-          weight: "Bolder",
-          spacing: "None",
-          size: "Medium",
-        }
-
-        otherAnswerBlock.items.push(otherAnswerTitle);
-        
-        Object.keys(otherAnswerArray).forEach((name) => {
-          const answerText = otherAnswerArray[name];
-        
-          const singleAnswer = {
-            type: "TextBlock",
-            text: `\"${answerText}\"`,
-            wrap: true,
-            spacing: "Small",
-            size: "Small",
+        if (formData.hasOther == true) {
+          const otherAnswerBlock = {
+            type: "Container",
+            sacing: "Small",
+            items: []
           };
+  
+          const otherAnswerTitle = {
+            type: "TextBlock",
+            text: `Other: ${Object.keys(otherAnswerArray).length}`,
+            weight: "Bolder",
+            spacing: "None",
+            size: "Medium",
+          }
+          otherAnswerBlock.items.push(otherAnswerTitle);
         
-          if (!Boolean(isAnonymous)) {
-            const nameBlock = {
+          Object.keys(otherAnswerArray).forEach((name) => {
+            const answerText = otherAnswerArray[name];
+          
+            const singleAnswer = {
               type: "TextBlock",
-              text: `${name}:`,
+              text: `\"${answerText}\"`,
               wrap: true,
-              weight: "Bolder",
               spacing: "Small",
               size: "Small",
             };
-            otherAnswerBlock.items.push(nameBlock, singleAnswer);
-          }
-          else {
-            otherAnswerBlock.items.push(singleAnswer);
-          }
-        });
-        
-        // Push the otherAnswerBlock to the dynamicResults array
-        dynamicResults.push(otherAnswerBlock);
+          
+            if (!Boolean(isAnonymous)) {
+              const nameBlock = {
+                type: "TextBlock",
+                text: `${name}:`,
+                wrap: true,
+                weight: "Bolder",
+                spacing: "Small",
+                size: "Small",
+              };
+              otherAnswerBlock.items.push(nameBlock, singleAnswer);
+            }
+            else {
+              otherAnswerBlock.items.push(singleAnswer);
+            }
+          });
+          
+          // Push the otherAnswerBlock to the dynamicResults array
+          dynamicResults.push(otherAnswerBlock);
+        }
 
         // Followed by our actual Adaptive Card template.
         let pollresults =
@@ -1964,7 +1978,7 @@ function highfivehelp(bot) {
                                       "inlines": [
                                           {
                                               "type": "TextRun",
-                                              "text": "✋ highfivecard [recipient-email]",
+                                              "text": "✋ highfivecard @recipient",
                                               "fontType": "Monospace",
                                               "weight": "bolder"
                                           }
@@ -1975,7 +1989,7 @@ function highfivehelp(bot) {
                                       "inlines": [
                                           {
                                               "type": "TextRun",
-                                              "text": "Creates High Five recognition cards for users in chat! Supports multiple emails."
+                                              "text": "Creates High Five recognition cards for mentioned users! Supports multiple mentions."
                                           }
                                       ],
                                       "spacing": "None"
@@ -1985,7 +1999,7 @@ function highfivehelp(bot) {
                                       "inlines": [
                                           {
                                               "type": "TextRun",
-                                              "text": "🎉 birthdaycard [recipient-email]",
+                                              "text": "🎉 birthdaycard @recipient",
                                               "fontType": "Monospace",
                                               "weight": "bolder"
                                           }
@@ -1996,7 +2010,7 @@ function highfivehelp(bot) {
                                       "inlines": [
                                           {
                                               "type": "TextRun",
-                                              "text": "Highlight a birthday person in chat! Supports multiple emails."
+                                              "text": "Highlight a birthday person with a card by mentioning them with this command! Supports multiple mentions."
                                           }
                                       ],
                                       "spacing": "None"

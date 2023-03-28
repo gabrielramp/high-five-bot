@@ -7,3 +7,4 @@ authorization/bulletinAuthorizations.JSON
 .env
 logs
 bulletins
+logs/commandLog.json
