@@ -692,6 +692,16 @@ framework.on('attachmentAction', async (bot, trigger) => {
 
   switch (formData.formType) {
 
+    case "nextEditViewall": {
+      await bulletin.nextEditViewall(bot,trigger,attachedForm);
+      break;
+    }
+
+    case "nextPageViewall": {
+      await bulletin.viewAllNextPage(bot, trigger, attachedForm);
+      break;
+    }
+
     case "newViewerStringandContinue": {
       await bulletin.addViewerToBulletin(bot, trigger, attachedForm);
       await bulletin.addViewersEvoke(bot, trigger, attachedForm);

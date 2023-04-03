@@ -569,33 +569,92 @@ async function editBulletinEvoke(bot, trigger, attachedForm) {
     // Build an array of names for the bulletinIds]
     let allActions = []
     let allActionSets = []
-    for (let i = 0; i < sortedAuthorizedBulletins.length; i++) {
-        console.log(`DEBUG: editEvoke: Building action button ${await getBulletinNameFromId(sortedAuthorizedBulletins[i])}`)
-        let singleAction = 
-        {
-            "type": "Action.Submit",
-            "title": `${await getBulletinNameFromId(sortedAuthorizedBulletins[i])}`,
-            "id": `${sortedAuthorizedBulletins[i]}`,
-            "data": {
-                "formType": "editBulletinId",
-                "endpoint": `${process.env.WEBHOOKURL}/submit`,
-                "trigger": trigger,
-                "bulletinId": sortedAuthorizedBulletins[i]
+    if (!(sortedAuthorizedBulletins.length > 9)) {
+        console.log("DEBUG: editBulletinEvoke: Doing less than 9");
+        // Looping for all of the bulletinIds the user has access to
+        for (let i = 0; i < sortedAuthorizedBulletins.length; i++) {
+            // Making that action with the title of the bulletin, and the required Id in the data
+            let singleAction = 
+            {
+                "type": "Action.Submit",
+                "title": `${await getBulletinNameFromId(sortedAuthorizedBulletins[i])}`,
+                "id": `${sortedAuthorizedBulletins[i]}`,
+                "data": {
+                    "formType": "editBulletinId",
+                    "endpoint": `${process.env.WEBHOOKURL}/submit`,
+                    "trigger": trigger,
+                    "bulletinId": sortedAuthorizedBulletins[i]
+                }
             }
+            allActions.push(singleAction);
         }
-        allActions.push(singleAction);
+        // Now we insert these actions into their ActionSets, three at a time.
+        for (let i = 0; i < allActions.length; i += 3) {
+            let actionSet = {
+                "type": "ActionSet",
+                "spacing": "None",
+                "actions": allActions.slice(i, i + 3)
+            };
+            allActionSets.push(actionSet);
+        }
+        console.log(`Resulting action sets array: ${JSON.stringify(allActionSets, null, 2)}`);
     }
-    console.log(`Resulting actions array: ${JSON.stringify(allActions,null,2)}`)
+    // If the user needs more than one page of bulletins
+    else {
+        console.log("DEBUG: editBulletinEvoke: Doing more than 9");
 
-    for (let i = 0; i < allActions.length; i += 3) {
-        let actionSet = {
+        // Looping for all of the bulletinIds the user has access to
+        for (let i = 0; i < 9; i++) {
+            // Making that action with the title of the bulletin, and the required Id in the data
+            let singleAction = 
+            {
+                "type": "Action.Submit",
+                "title": `${await getBulletinNameFromId(sortedAuthorizedBulletins[i])}`,
+                "id": `${sortedAuthorizedBulletins[i]}`,
+                "data": {
+                    "formType": "editBulletinId",
+                    "endpoint": `${process.env.WEBHOOKURL}/submit`,
+                    "trigger": trigger,
+                    "bulletinId": sortedAuthorizedBulletins[i]
+                }
+            }
+            allActions.push(singleAction);
+        }
+
+        // And then we'll push those into the ActionSets.
+        for (let i = 0; i < allActions.length; i += 3) {
+            let actionSet = {
+                "type": "ActionSet",
+                "spacing": "None",
+                "actions": allActions.slice(i, i + 3)
+            };
+            allActionSets.push(actionSet);
+        }
+
+        sortedAuthorizedBulletins.splice(0, 9).join(',');
+        console.log("DEBUG: editBulletinsEvoke: remaining bulletins: " + sortedAuthorizedBulletins);
+        // We first want to create a 'next page' module
+        let nextPageModule = {
             "type": "ActionSet",
-            "spacing": "None",
-            "actions": allActions.slice(i, i + 3)
+            "spacing": "Large",
+            "actions": [
+                {
+                    "type": "Action.Submit",
+                    "title": `Next Page`,
+                    "id": `nextEditViewall`,
+                    "data": {
+                        "formType": "nextEditViewall",
+                        "endpoint": `${process.env.WEBHOOKURL}/submit`,
+                        "trigger": trigger,
+                        "remainingBulletins": `${sortedAuthorizedBulletins}`
+                    }
+                }
+            ]
         };
-        allActionSets.push(actionSet);
+
+        // Finally, we push the 'Next Page' actionset into the card.
+        allActionSets.push(nextPageModule);
     }
-    console.log(`Resulting action sets array: ${JSON.stringify(allActionSets, null, 2)}`);
 
     
     let editEvokeCard = 
@@ -606,13 +665,9 @@ async function editBulletinEvoke(bot, trigger, attachedForm) {
         "body": [
             {
                 "type": "TextBlock",
-                "text": "Edit a Bulletin",
-            },
-            {
-                "type": "TextBlock",
                 "spacing": "None",
-                "text": "Select a Bulletin to edit:",
-                "size": "Medium",
+                "text": "Select a Bulletin to Edit 📝",
+                "size": "Large",
                 "weight": "Bolder"
             },
             {
@@ -626,6 +681,133 @@ async function editBulletinEvoke(bot, trigger, attachedForm) {
     try {
         await bot.censor(attachedForm.messageId);
         await bot.sendCard(editEvokeCard, "editEvokeCard");
+    } catch (e) {
+        console.log(e)
+    }
+}
+
+async function nextEditViewall(bot, trigger, attachedForm) {
+    const formData = trigger.attachmentAction.inputs;
+
+    // Already-sorted bulletinIds that the user has access to viewing that just needs to be printed
+    let remainingBulletinIds = formData.remainingBulletins;
+
+    console.log(remainingBulletinIds);
+    remainingBulletinIds = remainingBulletinIds.split(',')
+
+    let allActions = []
+    let allActionSets = []
+    if (!(remainingBulletinIds.length > 9)) {
+        console.log("DEBUG: nextEditViewall: Doing less than 9");
+        // Looping for all of the bulletinIds the user has access to
+        for (let i = 0; i < remainingBulletinIds.length; i++) {
+            // Making that action with the title of the bulletin, and the required Id in the data
+            let singleAction = 
+            {
+                "type": "Action.Submit",
+                "title": `${await getBulletinNameFromId(remainingBulletinIds[i])}`,
+                "id": `${remainingBulletinIds[i]}`,
+                "data": {
+                    "formType": "editBulletinId",
+                    "endpoint": `${process.env.WEBHOOKURL}/submit`,
+                    //"trigger": trigger,
+                    "bulletinId": remainingBulletinIds[i]
+                }
+            }
+            allActions.push(singleAction);
+        }
+        // Now we insert these actions into their ActionSets, three at a time.
+        for (let i = 0; i < allActions.length; i += 3) {
+            let actionSet = {
+                "type": "ActionSet",
+                "spacing": "None",
+                "actions": allActions.slice(i, i + 3)
+            };
+            allActionSets.push(actionSet);
+        }
+        console.log(`Resulting action sets array: ${JSON.stringify(allActionSets, null, 2)}`);
+    }
+    // If the user needs more than one page of bulletins
+    else {
+        console.log("DEBUG: nextEditViewall: Doing more than 9");
+
+        // Looping for all of the bulletinIds the user has access to
+        for (let i = 0; i < 9; i++) {
+            // Making that action with the title of the bulletin, and the required Id in the data
+            let singleAction = 
+            {
+                "type": "Action.Submit",
+                "title": `${await getBulletinNameFromId(remainingBulletinIds[i])}`,
+                "id": `${remainingBulletinIds[i]}`,
+                "data": {
+                    "formType": "editBulletinId",
+                    "endpoint": `${process.env.WEBHOOKURL}/submit`,
+                    //"trigger": trigger,
+                    "bulletinId": remainingBulletinIds[i]
+                }
+            }
+            allActions.push(singleAction);
+        }
+
+        // And then we'll push those into the ActionSets.
+        for (let i = 0; i < allActions.length; i += 3) {
+            let actionSet = {
+                "type": "ActionSet",
+                "spacing": "None",
+                "actions": allActions.slice(i, i + 3)
+            };
+            allActionSets.push(actionSet);
+        }
+
+        remainingBulletinIds.splice(0, 9).join(',');
+        console.log("DEBUG: nextEditViewall: remaining bulletins: " + remainingBulletinIds);
+        // We first want to create a 'next page' module
+        let nextPageModule = {
+            "type": "ActionSet",
+            "spacing": "Large",
+            "actions": [
+                {
+                    "type": "Action.Submit",
+                    "title": `Next Page`,
+                    "id": `nextEditViewall`,
+                    "data": {
+                        "formType": "nextEditViewall",
+                        "endpoint": `${process.env.WEBHOOKURL}/submit`,
+                        //"trigger": trigger,
+                        "remainingBulletins": `${remainingBulletinIds}`
+                    }
+                }
+            ]
+        };
+
+        // Finally, we push the 'Next Page' actionset into the card.
+        allActionSets.push(nextPageModule);
+    }
+
+    let nextEditViewallCard = 
+    {
+        "type": "AdaptiveCard",
+        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+        "version": "1.3",
+        "body": [
+            {
+                "type": "TextBlock",
+                "spacing": "None",
+                "text": "Select a Bulletin to Edit 📝",
+                "size": "Large",
+                "weight": "Bolder"
+            },
+            {
+                "type": "Container",
+                "spacing": "Small",
+                "items": allActionSets
+            }
+        ]
+    };
+
+    try {
+        await bot.censor(attachedForm.messageId);
+        await bot.sendCard(nextEditViewallCard, "nextEditViewall");
     } catch (e) {
         console.log(e)
     }
@@ -1824,40 +2006,108 @@ async function viewAllBulletinsEvoke(bot, trigger, attachedForm) {
 
     // Do something with the sortedViewableBulletins array
     console.log("DEBUG: viewAllBulletinsEvoke: Resulting sorted bulletinIds:" + sortedAuthorizedBulletins);
+    console.log("DEBUG: viewAllBulletinsEvoke: Number of bulletins attempting to display:" + sortedAuthorizedBulletins.length);
 
-    // 3.   After that, we want to build the Microsoft Adaptive card. First we should check how many items are in the array, so we know how many ActionSets to push into our body.
-    // Build an array of names for the bulletinIds]
+    // TODO:
+    /*
+        If the amount of bulletins that someone has exceeds 8 bulletins, then we want to: 
+        1. Only display 9 bulletins, then
+        2. Attach the 'pagesModule' which will have a separator and have the button: 'Next Page'.
+        3. When 'nextPageViewall' is sent, then we want to call a function that does the same thing but shows the next 9 bulletins instead.
+    */
+
+    // Now we build the actions of the card. The actions will consist of all of the bulletin names that the user has access to, and a 'next page' button if they have more than 9.
+    // If the user just needs one page of bulletins
+
     let allActions = []
     let allActionSets = []
-    for (let i = 0; i < sortedAuthorizedBulletins.length; i++) {
-        console.log(`DEBUG: editEvoke: Building action button ${await getBulletinNameFromId(sortedAuthorizedBulletins[i])}`)
-        let singleAction = 
-        {
-            "type": "Action.Submit",
-            "title": `${await getBulletinNameFromId(sortedAuthorizedBulletins[i])}`,
-            "id": `${sortedAuthorizedBulletins[i]}`,
-            "data": {
-                "formType": "bulletinView",
-                "endpoint": `${process.env.WEBHOOKURL}/submit`,
-                "trigger": trigger,
-                "bulletinId": sortedAuthorizedBulletins[i]
+    if (!(sortedAuthorizedBulletins.length > 9)) {
+        console.log("DEBUG: viewAllBulletinsEvoke: Doing less than 9");
+        // Looping for all of the bulletinIds the user has access to
+        for (let i = 0; i < sortedAuthorizedBulletins.length; i++) {
+            // Making that action with the title of the bulletin, and the required Id in the data
+            let singleAction = 
+            {
+                "type": "Action.Submit",
+                "title": `${await getBulletinNameFromId(sortedAuthorizedBulletins[i])}`,
+                "id": `${sortedAuthorizedBulletins[i]}`,
+                "data": {
+                    "formType": "bulletinView",
+                    "endpoint": `${process.env.WEBHOOKURL}/submit`,
+                    "trigger": trigger,
+                    "bulletinId": sortedAuthorizedBulletins[i]
+                }
             }
+            allActions.push(singleAction);
         }
-        allActions.push(singleAction);
+        // Now we insert these actions into their ActionSets, three at a time.
+        for (let i = 0; i < allActions.length; i += 3) {
+            let actionSet = {
+                "type": "ActionSet",
+                "spacing": "None",
+                "actions": allActions.slice(i, i + 3)
+            };
+            allActionSets.push(actionSet);
+        }
+        console.log(`Resulting action sets array: ${JSON.stringify(allActionSets, null, 2)}`);
     }
-    console.log(`Resulting actions array: ${JSON.stringify(allActions,null,2)}`)
+    // If the user needs more than one page of bulletins
+    else {
+        console.log("DEBUG: viewAllBulletinsEvoke: Doing more than 9");
 
-    for (let i = 0; i < allActions.length; i += 3) {
-        let actionSet = {
+        // Looping for all of the bulletinIds the user has access to
+        for (let i = 0; i < 9; i++) {
+            // Making that action with the title of the bulletin, and the required Id in the data
+            let singleAction = 
+            {
+                "type": "Action.Submit",
+                "title": `${await getBulletinNameFromId(sortedAuthorizedBulletins[i])}`,
+                "id": `${sortedAuthorizedBulletins[i]}`,
+                "data": {
+                    "formType": "bulletinView",
+                    "endpoint": `${process.env.WEBHOOKURL}/submit`,
+                    "trigger": trigger,
+                    "bulletinId": sortedAuthorizedBulletins[i]
+                }
+            }
+            allActions.push(singleAction);
+        }
+
+        // And then we'll push those into the ActionSets.
+        for (let i = 0; i < allActions.length; i += 3) {
+            let actionSet = {
+                "type": "ActionSet",
+                "spacing": "None",
+                "actions": allActions.slice(i, i + 3)
+            };
+            allActionSets.push(actionSet);
+        }
+
+        sortedAuthorizedBulletins.splice(0, 9).join(',');
+        console.log("DEBUG: viewAllBulletinsEvoke: remaining bulletins: " + sortedAuthorizedBulletins);
+        // We first want to create a 'next page' module
+        let nextPageModule = {
             "type": "ActionSet",
-            "spacing": "None",
-            "actions": allActions.slice(i, i + 3)
+            "spacing": "Large",
+            "actions": [
+                {
+                    "type": "Action.Submit",
+                    "title": `Next Page`,
+                    "id": `nextPageViewall`,
+                    "data": {
+                        "formType": "nextPageViewall",
+                        "endpoint": `${process.env.WEBHOOKURL}/submit`,
+                        "trigger": trigger,
+                        "remainingBulletins": `${sortedAuthorizedBulletins}`
+                    }
+                }
+            ]
         };
-        allActionSets.push(actionSet);
-    }
-    console.log(`Resulting action sets array: ${JSON.stringify(allActionSets, null, 2)}`);
 
-    
+        // Finally, we push the 'Next Page' actionset into the card.
+        allActionSets.push(nextPageModule);
+    }
+
     let viewEvokeCard = 
     {
         "type": "AdaptiveCard",
@@ -1887,8 +2137,134 @@ async function viewAllBulletinsEvoke(bot, trigger, attachedForm) {
     }
 } 
 
-// Helper functions
+async function viewAllNextPage(bot, trigger, attachedForm) {
+    const formData = trigger.attachmentAction.inputs;
 
+    // Already-sorted bulletinIds that the user has access to viewing that just needs to be printed
+    let remainingBulletinIds = formData.remainingBulletins;
+
+    console.log(remainingBulletinIds);
+    remainingBulletinIds = remainingBulletinIds.split(',')
+
+    let allActions = []
+    let allActionSets = []
+    if (!(remainingBulletinIds.length > 9)) {
+        console.log("DEBUG: viewAllBulletinsEvoke: Doing less than 9");
+        // Looping for all of the bulletinIds the user has access to
+        for (let i = 0; i < remainingBulletinIds.length; i++) {
+            // Making that action with the title of the bulletin, and the required Id in the data
+            let singleAction = 
+            {
+                "type": "Action.Submit",
+                "title": `${await getBulletinNameFromId(remainingBulletinIds[i])}`,
+                "id": `${remainingBulletinIds[i]}`,
+                "data": {
+                    "formType": "bulletinView",
+                    "endpoint": `${process.env.WEBHOOKURL}/submit`,
+                    //"trigger": trigger,
+                    "bulletinId": remainingBulletinIds[i]
+                }
+            }
+            allActions.push(singleAction);
+        }
+        // Now we insert these actions into their ActionSets, three at a time.
+        for (let i = 0; i < allActions.length; i += 3) {
+            let actionSet = {
+                "type": "ActionSet",
+                "spacing": "None",
+                "actions": allActions.slice(i, i + 3)
+            };
+            allActionSets.push(actionSet);
+        }
+        console.log(`Resulting action sets array: ${JSON.stringify(allActionSets, null, 2)}`);
+    }
+    // If the user needs more than one page of bulletins
+    else {
+        console.log("DEBUG: viewAllBulletinsEvoke: Doing more than 9");
+
+        // Looping for all of the bulletinIds the user has access to
+        for (let i = 0; i < 9; i++) {
+            // Making that action with the title of the bulletin, and the required Id in the data
+            let singleAction = 
+            {
+                "type": "Action.Submit",
+                "title": `${await getBulletinNameFromId(remainingBulletinIds[i])}`,
+                "id": `${remainingBulletinIds[i]}`,
+                "data": {
+                    "formType": "bulletinView",
+                    "endpoint": `${process.env.WEBHOOKURL}/submit`,
+                    //"trigger": trigger,
+                    "bulletinId": remainingBulletinIds[i]
+                }
+            }
+            allActions.push(singleAction);
+        }
+
+        // And then we'll push those into the ActionSets.
+        for (let i = 0; i < allActions.length; i += 3) {
+            let actionSet = {
+                "type": "ActionSet",
+                "spacing": "None",
+                "actions": allActions.slice(i, i + 3)
+            };
+            allActionSets.push(actionSet);
+        }
+
+        remainingBulletinIds.splice(0, 9).join(',');
+        console.log("DEBUG: viewAllBulletinsEvoke: remaining bulletins: " + remainingBulletinIds);
+        // We first want to create a 'next page' module
+        let nextPageModule = {
+            "type": "ActionSet",
+            "spacing": "Large",
+            "actions": [
+                {
+                    "type": "Action.Submit",
+                    "title": `Next Page`,
+                    "id": `nextPageViewall`,
+                    "data": {
+                        "formType": "nextPageViewall",
+                        "endpoint": `${process.env.WEBHOOKURL}/submit`,
+                        //"trigger": trigger,
+                        "remainingBulletins": `${remainingBulletinIds}`
+                    }
+                }
+            ]
+        };
+
+        // Finally, we push the 'Next Page' actionset into the card.
+        allActionSets.push(nextPageModule);
+    }
+
+    let viewEvokeCard = 
+    {
+        "type": "AdaptiveCard",
+        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+        "version": "1.3",
+        "body": [
+            {
+                "type": "TextBlock",
+                "spacing": "None",
+                "text": "Select a Bulletin to View 📜",
+                "size": "Large",
+                "weight": "Bolder"
+            },
+            {
+                "type": "Container",
+                "spacing": "Small",
+                "items": allActionSets
+            }
+        ]
+    };
+
+    try {
+        await bot.censor(attachedForm.messageId);
+        await bot.sendCard(viewEvokeCard, "viewEvokeCard");
+    } catch (e) {
+        console.log(e)
+    }
+}
+
+// Helper functions
 async function deleteSelectedBulletinItems(bot, trigger, attachedForm) {
     console.log(`DEBUG insertNewItem: Received form ${JSON.stringify(attachedForm, null, 2)}`);
     let formData = attachedForm.inputs;
@@ -1957,5 +2333,7 @@ module.exports = {
     viewAllBulletinsEvoke: viewAllBulletinsEvoke,
     bulletinCreateConfirm: bulletinCreateConfirm,
     addViewersEvoke: addViewersEvoke,
-    addViewerToBulletin: addViewerToBulletin
+    addViewerToBulletin: addViewerToBulletin,
+    viewAllNextPage: viewAllNextPage,
+    nextEditViewall: nextEditViewall
 };
