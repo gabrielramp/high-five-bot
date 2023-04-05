@@ -19,15 +19,6 @@ async function bulletinEvoke(bot, trigger) {
     };
     bulletinEvokeBodyBlock.push(cardTitle);
 
-    /*let flavorText = 
-    {
-        "type": "TextBlock",
-        "text": "Save important information!",
-        "wrap": true,
-        "spacing": "None"
-    };
-    bulletinEvokeBodyBlock.push(flavorText);*/
-
     // Building the "Quickly View your Bulletins" block
     // Get the most recently viewed bulletins for this user
     const topViewedBulletins = await getTopViewedBulletins(trigger.person.userName);
@@ -52,7 +43,6 @@ async function bulletinEvoke(bot, trigger) {
     }
 
     let topBulletinsBlock = {};
-    console.log(`DEBUG hasTopBulletins ${hasTopBulletins}`)
     if (hasTopBulletins != 0) {
         topBulletinsBlock = 
         {
@@ -179,7 +169,6 @@ async function bulletinEvoke(bot, trigger) {
     };
     bulletinEvokeBodyBlock.push(actionsBlock);
 
-    console.log(`topbulletins: ${hasTopBulletins}`);
     // Create 'Bulletin' Evoke Card:
     let bulletinEvokeCard = {
         "type": "AdaptiveCard",
@@ -199,11 +188,15 @@ async function bulletinEvoke(bot, trigger) {
 
 // Here we handle when a user clicks the 'Create a Bulletin' button.
 async function bulletinCreate(bot, trigger, attachedForm) {
-  // formData will contain all information passed through with the submission action of the interacted Adaptive Card, so hopefully i.e formType, formTitle, formId.
-  const formData = trigger.attachmentAction.inputs;
-  console.log(`DEBUG BULLETINCREATE: attachedForm: ${JSON.stringify(attachedForm), undefined, 2}`)
 
-  let newBulletinCard = {
+    // Evoker Check
+    if (!(await utils.checkEvokerClicked(attachedForm, bot))) { console.log(`Evoker check failed.`); bot.dm(attachedForm.personId, `This is someone else's card! To get started with bulletins, use the 'bulletin' command!`); return; }
+    // Evoker Check End
+
+    // formData will contain all information passed through with the submission action of the interacted Adaptive Card, so hopefully i.e formType, formTitle, formId.
+    const formData = trigger.attachmentAction.inputs;
+
+    let newBulletinCard = {
         "type": "AdaptiveCard",
         "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
         "version": "1.3",
@@ -529,6 +522,11 @@ async function updateViewerLists(bot, bulletinId, roomId) {
 
 // Handled when a user clicks 'edit a bulletin' when 
 async function editBulletinEvoke(bot, trigger, attachedForm) {
+
+    // Evoker Check
+    if (!(await utils.checkEvokerClicked(attachedForm, bot))) { console.log(`Evoker check failed.`); bot.dm(attachedForm.personId, `This is someone else's card! To get started with bulletins, use the 'bulletin' command!`); return; }
+    // Evoker Check End
+
     // formData will contain all information passed through with the submission action of the interacted Adaptive Card, so hopefully i.e formType, formTitle, formId.
     const formData = trigger.attachmentAction.inputs;
     const editEvoker = await utils.getPersonDetails(attachedForm.personId);
@@ -687,6 +685,11 @@ async function editBulletinEvoke(bot, trigger, attachedForm) {
 }
 
 async function nextEditViewall(bot, trigger, attachedForm) {
+
+    // Evoker Check
+    if (!(await utils.checkEvokerClicked(attachedForm, bot))) { console.log(`Evoker check failed.`); bot.dm(attachedForm.personId, `This is someone else's card! To get started with bulletins, use the 'bulletin' command!`); return; }
+    // Evoker Check End
+
     const formData = trigger.attachmentAction.inputs;
 
     // Already-sorted bulletinIds that the user has access to viewing that just needs to be printed
@@ -861,6 +864,15 @@ async function getTopViewedBulletins(personEmail) {
 }
 
 async function printBulletin(bot, trigger, attachedForm) {
+
+    // Evoker Check
+    try {
+        if (!(await utils.checkEvokerClicked(attachedForm, bot))) { console.log(`Evoker check failed.`); bot.dm(attachedForm.personId, `This is someone else's card! To get started with bulletins, use the 'bulletin' command!`); return; }
+    } catch (e) {
+        console.log (e);
+    }
+    // Evoker Check End
+
     const formData = trigger.attachmentAction.inputs;
     const bulletinId = formData.bulletinId;
     console.log(`DEBUG: printBulletin ${bulletinId}`);
@@ -986,6 +998,11 @@ async function printBulletin(bot, trigger, attachedForm) {
 
 // This will take a specific bulletinId and create a card to allow the user to select items, remove them, add a new one, or edit bulletin permissions
 async function editBulletinId(bot, trigger, attachedForm) {
+
+    // Evoker Check
+    if (!(await utils.checkEvokerClicked(attachedForm, bot))) { console.log(`Evoker check failed.`); bot.dm(attachedForm.personId, `This is someone else's card! To get started with bulletins, use the 'bulletin' command!`); return; }
+    // Evoker Check End
+
     // Retrieve personal data about the editor
     console.log(`DEBUG editBulletinId: Received form ${JSON.stringify(attachedForm,null,2)}`);
     const formData = attachedForm.inputs;
@@ -1139,6 +1156,11 @@ async function editBulletinId(bot, trigger, attachedForm) {
 
 
 async function addBulletinItemsEvoke(bot, trigger, attachedForm) {
+
+    // Evoker Check
+    if (!(await utils.checkEvokerClicked(attachedForm, bot))) { console.log(`Evoker check failed.`); bot.dm(attachedForm.personId, `This is someone else's card! To get started with bulletins, use the 'bulletin' command!`); return; }
+    // Evoker Check End
+
     console.log(`DEBUG addBulletinItemsEvoke: Received form ${JSON.stringify(attachedForm,null,2)}`);
     const formData = attachedForm.inputs;
     const bulletinId = formData.bulletinId;
@@ -1236,6 +1258,11 @@ async function addBulletinItemsEvoke(bot, trigger, attachedForm) {
 
 // Exclusively adds item to a bulletin Id given an item in attachedForm and updates the unixLastEdited timestamp.
 async function insertNewItem(bot, trigger, attachedForm) {
+
+    // Evoker Check
+    if (!(await utils.checkEvokerClicked(attachedForm, bot))) { console.log(`Evoker check failed.`); bot.dm(attachedForm.personId, `This is someone else's card! To get started with bulletins, use the 'bulletin' command!`); return; }
+    // Evoker Check End
+
     console.log(`DEBUG insertNewItem: Received form ${JSON.stringify(attachedForm, null, 2)}`);
     let formData = attachedForm.inputs;
     const bulletinId = formData.bulletinId;
@@ -1337,6 +1364,11 @@ async function insertNewItem(bot, trigger, attachedForm) {
 }
 
 async function editPermissionsEvoke(bot, trigger, attachedForm) {
+
+    // Evoker Check
+    if (!(await utils.checkEvokerClicked(attachedForm, bot))) { console.log(`Evoker check failed.`); bot.dm(attachedForm.personId, `This is someone else's card! To get started with bulletins, use the 'bulletin' command!`); return; }
+    // Evoker Check End
+
     const formData = trigger.attachmentAction.inputs;
     const bulletinId = formData.bulletinId;
 
@@ -1492,6 +1524,11 @@ async function editPermissionsEvoke(bot, trigger, attachedForm) {
 }
 
 async function addViewersEvoke(bot, trigger, attachedForm) {
+
+    // Evoker Check
+    if (!(await utils.checkEvokerClicked(attachedForm, bot))) { console.log(`Evoker check failed.`); bot.dm(attachedForm.personId, `This is someone else's card! To get started with bulletins, use the 'bulletin' command!`); return; }
+    // Evoker Check End
+
     const formData = trigger.attachmentAction.inputs;
     const bulletinId = formData.bulletinId;
 
@@ -1572,10 +1609,14 @@ async function addViewersEvoke(bot, trigger, attachedForm) {
 }
 
 async function addViewerToBulletin(bot, trigger, attachedForm) {
+
+    // Evoker Check
+    if (!(await utils.checkEvokerClicked(attachedForm, bot))) { console.log(`Evoker check failed.`); bot.dm(attachedForm.personId, `This is someone else's card! To get started with bulletins, use the 'bulletin' command!`); return; }
+    // Evoker Check End
+
     const formData = trigger.attachmentAction.inputs;
     const bulletinId = formData.bulletinId;
     const newViewer = formData.newViewerStringInput;
-
     
     // Add them to the auth file
     // Opening the authorization file
@@ -1628,6 +1669,11 @@ async function addViewerToBulletin(bot, trigger, attachedForm) {
 }
 
 async function addEditorsEvoke(bot, trigger, attachedForm) {
+
+    // Evoker Check
+    if (!(await utils.checkEvokerClicked(attachedForm, bot))) { console.log(`Evoker check failed.`); bot.dm(attachedForm.personId, `This is someone else's card! To get started with bulletins, use the 'bulletin' command!`); return; }
+    // Evoker Check End
+
     const formData = trigger.attachmentAction.inputs;
     const bulletinId = formData.bulletinId;
 
@@ -1708,6 +1754,11 @@ async function addEditorsEvoke(bot, trigger, attachedForm) {
 }
 
 async function addEditorToBulletin(bot, trigger, attachedForm) {
+
+    // Evoker Check
+    if (!(await utils.checkEvokerClicked(attachedForm, bot))) { console.log(`Evoker check failed.`); bot.dm(attachedForm.personId, `This is someone else's card! To get started with bulletins, use the 'bulletin' command!`); return; }
+    // Evoker Check End
+
     const formData = trigger.attachmentAction.inputs;
     const bulletinId = formData.bulletinId;
     const newEditor = formData.newEditorStringInput;
@@ -1763,6 +1814,11 @@ async function addEditorToBulletin(bot, trigger, attachedForm) {
 }
 
 async function removeEditorsFromBulletin(bot, trigger, attachedForm) {
+
+    // Evoker Check
+    if (!(await utils.checkEvokerClicked(attachedForm, bot))) { console.log(`Evoker check failed.`); bot.dm(attachedForm.personId, `This is someone else's card! To get started with bulletins, use the 'bulletin' command!`); return; }
+    // Evoker Check End
+
     const formData = trigger.attachmentAction.inputs;
     const bulletinId = formData.bulletinId;
     const removeEditorsArray = formData.bulletinEditorsChoiceSet.split(',');
@@ -1806,6 +1862,11 @@ async function removeEditorsFromBulletin(bot, trigger, attachedForm) {
 }
 
 async function destroyBulletinEvoke(bot, trigger, attachedForm) {
+
+    // Evoker Check
+    if (!(await utils.checkEvokerClicked(attachedForm, bot))) { console.log(`Evoker check failed.`); bot.dm(attachedForm.personId, `This is someone else's card! To get started with bulletins, use the 'bulletin' command!`); return; }
+    // Evoker Check End
+
     const formData = trigger.attachmentAction.inputs;
     const bulletinId = formData.bulletinId;
     
@@ -1881,6 +1942,11 @@ async function destroyBulletinEvoke(bot, trigger, attachedForm) {
 }
 
 async function nukeBulletin(bot, trigger, attachedForm) {
+
+    // Evoker Check
+    if (!(await utils.checkEvokerClicked(attachedForm, bot))) { console.log(`Evoker check failed.`); bot.dm(attachedForm.personId, `This is someone else's card! To get started with bulletins, use the 'bulletin' command!`); return; }
+    // Evoker Check End
+
     // Remove every instance of this BulletinId from the authorization files. This is imperative to be done seamlessly such that the file continues to function seamlessly as if the bulletin never existed.
     const formData = trigger.attachmentAction.inputs;
     const bulletinId = formData.bulletinId;
@@ -1979,6 +2045,11 @@ async function nukeBulletin(bot, trigger, attachedForm) {
 }
 
 async function viewAllBulletinsEvoke(bot, trigger, attachedForm) {
+
+    // Evoker Check
+    if (!(await utils.checkEvokerClicked(attachedForm, bot))) { console.log(`Evoker check failed.`); bot.dm(attachedForm.personId, `This is someone else's card! To get started with bulletins, use the 'bulletin' command!`); return; }
+    // Evoker Check End
+
     // formData will contain all information passed through with the submission action of the interacted Adaptive Card, so hopefully i.e formType, formTitle, formId.
     const formData = trigger.attachmentAction.inputs;
     const viewEvoker = await utils.getPersonDetails(attachedForm.personId);
@@ -2138,6 +2209,11 @@ async function viewAllBulletinsEvoke(bot, trigger, attachedForm) {
 } 
 
 async function viewAllNextPage(bot, trigger, attachedForm) {
+
+    // Evoker Check
+    if (!(await utils.checkEvokerClicked(attachedForm, bot))) { console.log(`Evoker check failed.`); bot.dm(attachedForm.personId, `This is someone else's card! To get started with bulletins, use the 'bulletin' command!`); return; }
+    // Evoker Check End
+
     const formData = trigger.attachmentAction.inputs;
 
     // Already-sorted bulletinIds that the user has access to viewing that just needs to be printed
@@ -2266,6 +2342,11 @@ async function viewAllNextPage(bot, trigger, attachedForm) {
 
 // Helper functions
 async function deleteSelectedBulletinItems(bot, trigger, attachedForm) {
+
+    // Evoker Check
+    if (!(await utils.checkEvokerClicked(attachedForm, bot))) { console.log(`Evoker check failed.`); bot.dm(attachedForm.personId, `This is someone else's card! To get started with bulletins, use the 'bulletin' command!`); return; }
+    // Evoker Check End
+
     console.log(`DEBUG insertNewItem: Received form ${JSON.stringify(attachedForm, null, 2)}`);
     let formData = attachedForm.inputs;
     const bulletinId = formData.bulletinId;
