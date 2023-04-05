@@ -29,6 +29,15 @@ Table of Contents:
 
 [gas](https://github.com/gabrielramp/high-five-bot#gas)
 
+[bulletin](placeholder link)
+
+
+### help
+
+Highfive will respond to any mention without a valid command with the 'help' card, which can also be invoked with 'help'!
+
+![image](https://user-images.githubusercontent.com/86631042/230161089-240df1e0-0bd2-4178-a109-51c44a2322c2.png)
+
 ### getallemails
 
 Syntax: ``getallemails``
@@ -59,21 +68,21 @@ Syntax: ``poll``
 
 Evokes the bot to post an adaptive card with text inputs for creating a new poll. Only the user that evoked the bot can submit this card.
 
-This command can handle an infinite number of poll answers, separated in the text box by ';' semicolons.
+This command can handle an infinite number of poll answers, separated in the text box by ';' semicolons. This poll can handle multi-select, and toggle between anonymous and non-anonymous poll results. Enabling the 'Other' freeform option will allow the poll takers to submit their answer as 'Other' and specify their choice in a text box.
 
-![image](https://user-images.githubusercontent.com/86631042/219976092-4e277b40-9350-44ad-a6f0-97c1ffa57786.png)
+![image](https://user-images.githubusercontent.com/86631042/221441681-9d0476e6-5130-49de-911a-f4a3fa77f31e.png)
 
 Once submitted, the message is deleted and replaced with the created poll:
 
-![image](https://i.imgur.com/2CQLJQg.gif)
+![image](https://i.imgur.com/pHG7qYb.gif)
 
 Simultaneously, the evoker is sent a direct message with a card telling them how to view the results of the poll:
 
-![image](https://user-images.githubusercontent.com/86631042/219922173-001e0d25-dd33-4d29-ad5f-80ca81570fe0.png)
+![image](https://user-images.githubusercontent.com/86631042/221441908-115d6d85-722c-4afe-b345-1974b4df45ff.png)
 
 Clicking "View Current Results" will message the user with the current results:
 
-![image](https://user-images.githubusercontent.com/86631042/219922228-48b04e3e-ce64-4c18-9d38-38a50cc4bc4a.png)
+![image](https://user-images.githubusercontent.com/86631042/221442225-27aeef1f-9a20-41b8-bb9f-0ec0a3cefe70.png)
 
 ### freeform
 
@@ -122,6 +131,50 @@ Receiving a reply to your gas:
 After sending a reply:
 
 ![image](https://user-images.githubusercontent.com/86631042/220246037-d7edefe5-e5db-4903-832b-4db57b43863e.png)
+
+### bulletin
+
+Syntax: ``bulletin``
+
+Bulletin is a powerful feature that allows you to concatenate important resources into individual 'Bulletin' boards for your team to access right from Webex! Images coming soon.
+
+![image](https://user-images.githubusercontent.com/86631042/230161602-46466b4d-a728-4abe-b447-02e6f4154537.png)
+
+Creating a Bulletin
+
+![image](https://user-images.githubusercontent.com/86631042/230206568-411fe742-e2b8-42b5-a830-049dc9f24427.png)
+
+![image](https://user-images.githubusercontent.com/86631042/230206804-0079ccc9-43a9-427c-9b37-29305da94f4a.png)
+
+Editing a Bulletin
+
+![image](https://user-images.githubusercontent.com/86631042/230208950-e4df7be0-d3e3-45f7-8dda-faca8c8aa704.png)
+
+Adding Items to a Bulletin
+
+![image](https://user-images.githubusercontent.com/86631042/230209025-aa217c58-ce15-4cb0-81e0-a81db18959ff.png)
+
+Viewing a Bulletin
+
+![image](https://user-images.githubusercontent.com/86631042/230209312-b7525117-8ece-4bb5-bf2f-931b7c9e5470.png)
+
+Editing Bulletin Permissions
+
+![image](https://user-images.githubusercontent.com/86631042/230211092-f531f582-2b74-4d6a-9a5e-0809bcaa74e2.png)
+
+Adding Editors to your Bulletin
+
+![image](https://user-images.githubusercontent.com/86631042/230211158-ad7e7dd6-6410-4972-9de2-946d489ceda3.png)
+
+Adding Viewers to your Bulletin
+
+![image](https://user-images.githubusercontent.com/86631042/230212612-a41e2886-c43d-4943-91d6-ca69cd38bf8f.png)
+
+Deleting your Bulletin
+
+![image](https://user-images.githubusercontent.com/86631042/230212708-88830a58-c64c-46de-b0bd-80795b3c0686.png)
+
+![image](https://user-images.githubusercontent.com/86631042/230212780-a51fbabf-b482-441d-80e4-786df4e3a741.png)
 
 ## Credits
 
