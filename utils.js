@@ -61,23 +61,28 @@ async function logCommandEvoke(commandId) {
 
 async function checkEvokerClicked(attachedForm, bot) {
 
-  // First we get the Id of the trigger returned from the data in the card
-  let cardEvoker = attachedForm.inputs.trigger.person.id;
+  try {
+    // First we get the Id of the trigger returned from the data in the card
+    let cardEvoker = attachedForm.inputs.trigger.person.id;
 
-  // And the person that clicked the card.
-  let cardClicker = attachedForm.personId;
+    // And the person that clicked the card.
+    let cardClicker = attachedForm.personId;
 
-  console.log(`Comparing ${cardEvoker} to clicker ${cardClicker}`)
-  
-  // If these are the same people, then we return 'true' for, our evoker is the one interacting with the card.
-  if (cardEvoker == cardClicker) {
-    return true;
+    console.log(`Comparing ${cardEvoker} to clicker ${cardClicker}`)
+    
+    // If these are the same people, then we return 'true' for, our evoker is the one interacting with the card.
+    if (cardEvoker == cardClicker) {
+      return true;
+    }
+
+    // If someone clicked someone else's card, then we return a false.
+    else {
+      return false;
+    }
+  } catch (e) {
+    throw e;
   }
 
-  // If someone clicked someone else's card, then we return a false.
-  else {
-    return false;
-  }
 }
 
 module.exports = {generaterandomString, getUnixTimestamp, getPersonDetails, logCommandEvoke, checkEvokerClicked};

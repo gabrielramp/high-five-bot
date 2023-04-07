@@ -7,6 +7,7 @@ const utils = require('./utils');
 // This function handles when the command 'bulletin' is heard by the bot.
 async function bulletinEvoke(bot, trigger) {
 
+
     // Build the body
     let bulletinEvokeBodyBlock = [];
     let cardTitle = 
@@ -160,7 +161,7 @@ async function bulletinEvoke(bot, trigger) {
                         "data": {
                             "formType": "helpDelete",
                             "endpoint": `${process.env.WEBHOOKURL}/submit`,
-                            "trigger": `${trigger}`,
+                            "trigger": trigger,
                         }
                     }
                 ]
@@ -313,7 +314,7 @@ async function bulletinCreateConfirm(bot, trigger, attachedForm, bulletinId) {
                         "data": {
                             "formType": "bulletinView",
                             "endpoint": `${process.env.WEBHOOKURL}/submit`,
-                            "trigger": `${trigger}`,
+                            "trigger": trigger,
                             "bulletinId": bulletinId
                         }
                     },
@@ -324,7 +325,7 @@ async function bulletinCreateConfirm(bot, trigger, attachedForm, bulletinId) {
                         "data": {
                             "formType": "addBulletinItemsEvoke",
                             "endpoint": `${process.env.WEBHOOKURL}/submit`,
-                            "trigger": `${trigger}`,
+                            "trigger": trigger,
                             "bulletinId": bulletinId
                         }
                     }
@@ -523,14 +524,21 @@ async function updateViewerLists(bot, bulletinId, roomId) {
 // Handled when a user clicks 'edit a bulletin' when 
 async function editBulletinEvoke(bot, trigger, attachedForm) {
 
+    //console.log(`DEBUG:bulletinEvoke: contents of trigger: ${JSON.stringify(trigger,null,2)}`)
+
+
     // Evoker Check
-    if (!(await utils.checkEvokerClicked(attachedForm, bot))) { console.log(`Evoker check failed.`); bot.dm(attachedForm.personId, `This is someone else's card! To get started with bulletins, use the 'bulletin' command!`); return; }
+    try {
+        if (!(await utils.checkEvokerClicked(attachedForm, bot))) { console.log(`Evoker check failed.`); bot.dm(attachedForm.personId, `This is someone else's card! To get started with bulletins, use the 'bulletin' command!`); return; }
+    } catch (e) {
+        console.log(e);
+    }
     // Evoker Check End
 
     // formData will contain all information passed through with the submission action of the interacted Adaptive Card, so hopefully i.e formType, formTitle, formId.
     const formData = trigger.attachmentAction.inputs;
     const editEvoker = await utils.getPersonDetails(attachedForm.personId);
-    console.log(`DEBUG: editBulletinEvoke from ${editEvoker.userName}`)
+    //console.log(`DEBUG: editBulletinEvoke from ${editEvoker.userName}`)
 
     // Read authorization data
     const authFile = path.join(__dirname, 'authorization', `bulletinAuthorizations.json`);
@@ -560,7 +568,7 @@ async function editBulletinEvoke(bot, trigger, attachedForm) {
 
         return bulletinB.unixLastEdited - bulletinA.unixLastEdited;
     }).reverse(); // reversing the array because I accidentally sorted descending instead of ascending oops
-    console.log(`DEBUG: editBulletinEvoke: Final bulletin array:`+  JSON.stringify(sortedAuthorizedBulletins,null,2));
+    //console.log(`DEBUG: editBulletinEvoke: Final bulletin array:`+  JSON.stringify(sortedAuthorizedBulletins,null,2));
 
     // 3.   After that, we want to build the Microsoft Adaptive card. First we should check how many items are in the array, so we know how many ActionSets to push into our body.
 
@@ -568,7 +576,7 @@ async function editBulletinEvoke(bot, trigger, attachedForm) {
     let allActions = []
     let allActionSets = []
     if (!(sortedAuthorizedBulletins.length > 9)) {
-        console.log("DEBUG: editBulletinEvoke: Doing less than 9");
+        //console.log("DEBUG: editBulletinEvoke: Doing less than 9");
         // Looping for all of the bulletinIds the user has access to
         for (let i = 0; i < sortedAuthorizedBulletins.length; i++) {
             // Making that action with the title of the bulletin, and the required Id in the data
@@ -599,7 +607,7 @@ async function editBulletinEvoke(bot, trigger, attachedForm) {
     }
     // If the user needs more than one page of bulletins
     else {
-        console.log("DEBUG: editBulletinEvoke: Doing more than 9");
+        //console.log("DEBUG: editBulletinEvoke: Doing more than 9");
 
         // Looping for all of the bulletinIds the user has access to
         for (let i = 0; i < 9; i++) {
@@ -630,7 +638,7 @@ async function editBulletinEvoke(bot, trigger, attachedForm) {
         }
 
         sortedAuthorizedBulletins.splice(0, 9).join(',');
-        console.log("DEBUG: editBulletinsEvoke: remaining bulletins: " + sortedAuthorizedBulletins);
+        //console.log("DEBUG: editBulletinsEvoke: remaining bulletins: " + sortedAuthorizedBulletins);
         // We first want to create a 'next page' module
         let nextPageModule = {
             "type": "ActionSet",
@@ -687,7 +695,11 @@ async function editBulletinEvoke(bot, trigger, attachedForm) {
 async function nextEditViewall(bot, trigger, attachedForm) {
 
     // Evoker Check
-    if (!(await utils.checkEvokerClicked(attachedForm, bot))) { console.log(`Evoker check failed.`); bot.dm(attachedForm.personId, `This is someone else's card! To get started with bulletins, use the 'bulletin' command!`); return; }
+    try {
+        if (!(await utils.checkEvokerClicked(attachedForm, bot))) { console.log(`Evoker check failed.`); bot.dm(attachedForm.personId, `This is someone else's card! To get started with bulletins, use the 'bulletin' command!`); return; }
+    } catch (e) {
+        console.log(e)
+    }
     // Evoker Check End
 
     const formData = trigger.attachmentAction.inputs;
@@ -701,7 +713,7 @@ async function nextEditViewall(bot, trigger, attachedForm) {
     let allActions = []
     let allActionSets = []
     if (!(remainingBulletinIds.length > 9)) {
-        console.log("DEBUG: nextEditViewall: Doing less than 9");
+        //console.log("DEBUG: nextEditViewall: Doing less than 9");
         // Looping for all of the bulletinIds the user has access to
         for (let i = 0; i < remainingBulletinIds.length; i++) {
             // Making that action with the title of the bulletin, and the required Id in the data
@@ -732,7 +744,7 @@ async function nextEditViewall(bot, trigger, attachedForm) {
     }
     // If the user needs more than one page of bulletins
     else {
-        console.log("DEBUG: nextEditViewall: Doing more than 9");
+        //console.log("DEBUG: nextEditViewall: Doing more than 9");
 
         // Looping for all of the bulletinIds the user has access to
         for (let i = 0; i < 9; i++) {
@@ -763,7 +775,7 @@ async function nextEditViewall(bot, trigger, attachedForm) {
         }
 
         remainingBulletinIds.splice(0, 9).join(',');
-        console.log("DEBUG: nextEditViewall: remaining bulletins: " + remainingBulletinIds);
+        //console.log("DEBUG: nextEditViewall: remaining bulletins: " + remainingBulletinIds);
         // We first want to create a 'next page' module
         let nextPageModule = {
             "type": "ActionSet",
@@ -926,7 +938,8 @@ async function printBulletin(bot, trigger, attachedForm) {
             "data": {
                 "formType": "editBulletinId",
                 "bulletinId": `${bulletinId}`,
-                "authorizedPerson": `${attachedForm.personId}`
+                "authorizedPerson": `${attachedForm.personId}`,
+                "trigger": trigger
             }
         };
         viewActions.push(editBulletinAction);
@@ -1000,11 +1013,14 @@ async function printBulletin(bot, trigger, attachedForm) {
 async function editBulletinId(bot, trigger, attachedForm) {
 
     // Evoker Check
-    if (!(await utils.checkEvokerClicked(attachedForm, bot))) { console.log(`Evoker check failed.`); bot.dm(attachedForm.personId, `This is someone else's card! To get started with bulletins, use the 'bulletin' command!`); return; }
+    try {
+        if (!(await utils.checkEvokerClicked(attachedForm, bot))) { console.log(`Evoker check failed.`); bot.dm(attachedForm.personId, `This is someone else's card! To get started with bulletins, use the 'bulletin' command!`); return; }
+    } catch (e) {
+        console.log(e)
+    }
     // Evoker Check End
 
     // Retrieve personal data about the editor
-    console.log(`DEBUG editBulletinId: Received form ${JSON.stringify(attachedForm,null,2)}`);
     const formData = attachedForm.inputs;
     const bulletinId = formData.bulletinId;
     const editEvoker = await utils.getPersonDetails(attachedForm.personId);
@@ -1026,7 +1042,6 @@ async function editBulletinId(bot, trigger, attachedForm) {
     // Iterate over the 'items' array and create a toggle box for each item
     for (let i = 0; i < bulletinDataObject.items.length; i++) {
         const singleitem = bulletinDataObject.items[i];
-        console.log(`DEBUG editBulletinId: adding choice for item ${singleitem.content}`);
         const toggleOption = {
             "title": singleitem.content,
             "value": singleitem.id.toString()
@@ -1087,7 +1102,7 @@ async function editBulletinId(bot, trigger, attachedForm) {
                         "data": {
                             "formType": "deleteSelectedBulletinItems",
                             "endpoint": `${process.env.WEBHOOKURL}/submit`,
-                            "trigger": `${trigger}`,
+                            "trigger": trigger,
                             "bulletinId": bulletinId
                         }
                     },
@@ -1095,10 +1110,10 @@ async function editBulletinId(bot, trigger, attachedForm) {
                         "type": "Action.Submit",
                         "title": "Add Items to Bulletin",
                         "id": "addBulletinItemsEvoke",
-                        "data": {
+                        data: {
                             "formType": "addBulletinItemsEvoke",
                             "endpoint": `${process.env.WEBHOOKURL}/submit`,
-                            "trigger": `${trigger}`,
+                            "trigger": trigger,
                             "bulletinId": bulletinId
                         }
                     },
@@ -1109,7 +1124,7 @@ async function editBulletinId(bot, trigger, attachedForm) {
                         "data": {
                             "formType": "EditBulletinPerms",
                             "endpoint": `${process.env.WEBHOOKURL}/submit`,
-                            "trigger": `${trigger}`,
+                            "trigger": trigger,
                             "bulletinId": bulletinId
                         }
                     }
@@ -1126,7 +1141,7 @@ async function editBulletinId(bot, trigger, attachedForm) {
                         "data": {
                             "formType": "helpDelete",
                             "endpoint": `${process.env.WEBHOOKURL}/submit`,
-                            "trigger": `${trigger}`,
+                            "trigger": trigger,
                         }
                     },
                     {
@@ -1136,7 +1151,7 @@ async function editBulletinId(bot, trigger, attachedForm) {
                         "data": {
                             "formType": "destroyBulletin",
                             "endpoint": `${process.env.WEBHOOKURL}/submit`,
-                            "trigger": `${trigger}`,
+                            "trigger": trigger,
                             "bulletinId": bulletinId
                         }
                     }
@@ -1161,7 +1176,6 @@ async function addBulletinItemsEvoke(bot, trigger, attachedForm) {
     if (!(await utils.checkEvokerClicked(attachedForm, bot))) { console.log(`Evoker check failed.`); bot.dm(attachedForm.personId, `This is someone else's card! To get started with bulletins, use the 'bulletin' command!`); return; }
     // Evoker Check End
 
-    console.log(`DEBUG addBulletinItemsEvoke: Received form ${JSON.stringify(attachedForm,null,2)}`);
     const formData = attachedForm.inputs;
     const bulletinId = formData.bulletinId;
     const addItemsEvoker = await utils.getPersonDetails(attachedForm.personId);
@@ -1216,7 +1230,7 @@ async function addBulletinItemsEvoke(bot, trigger, attachedForm) {
                         "data": {
                             "formType": "helpDelete",
                             "endpoint": `${process.env.WEBHOOKURL}/submit`,
-                            "trigger": `${trigger}`,
+                            "trigger": trigger,
                             "bulletinId": bulletinId
                         }
                     },
@@ -1227,7 +1241,7 @@ async function addBulletinItemsEvoke(bot, trigger, attachedForm) {
                         "data": {
                             "formType": "submitNewBulletinIdItem",
                             "endpoint": `${process.env.WEBHOOKURL}/submit`,
-                            "trigger": `${trigger}`,
+                            "trigger": trigger,
                             "bulletinId": bulletinId
                         }
                     },
@@ -1238,7 +1252,7 @@ async function addBulletinItemsEvoke(bot, trigger, attachedForm) {
                         "data": {
                             "formType": "bulletinSubmitAndContinue",
                             "endpoint": `${process.env.WEBHOOKURL}/submit`,
-                            "trigger": `${trigger}`,
+                            "trigger": trigger,
                             "bulletinId": bulletinId
                         }
                     }
@@ -1263,7 +1277,7 @@ async function insertNewItem(bot, trigger, attachedForm) {
     if (!(await utils.checkEvokerClicked(attachedForm, bot))) { console.log(`Evoker check failed.`); bot.dm(attachedForm.personId, `This is someone else's card! To get started with bulletins, use the 'bulletin' command!`); return; }
     // Evoker Check End
 
-    console.log(`DEBUG insertNewItem: Received form ${JSON.stringify(attachedForm, null, 2)}`);
+    //console.log(`DEBUG insertNewItem: Received form ${JSON.stringify(attachedForm, null, 2)}`);
     let formData = attachedForm.inputs;
     const bulletinId = formData.bulletinId;
     const newBulletinItem = formData.newBulletinItem;
@@ -1290,10 +1304,10 @@ async function insertNewItem(bot, trigger, attachedForm) {
     // Adding the item
     bulletinDataObject.items.push(newItemObject);
     // Setting new timestamp
-    console.log(`DEBUG: InsertNewItem: Old Unix Timestamp: ${bulletinDataObject.unixLastEdited}`);
+    //console.log(`DEBUG: InsertNewItem: Old Unix Timestamp: ${bulletinDataObject.unixLastEdited}`);
     const tempTimestamp = utils.getUnixTimestamp();
     bulletinDataObject.unixLastEdited = tempTimestamp;
-    console.log(`DEBUG: InsertNewItem: New Unix Timestamp: ${bulletinDataObject.unixLastEdited}`);
+    //console.log(`DEBUG: InsertNewItem: New Unix Timestamp: ${bulletinDataObject.unixLastEdited}`);
 
     let newItemConfirmationCard = 
     {
@@ -1330,7 +1344,7 @@ async function insertNewItem(bot, trigger, attachedForm) {
                         "data": {
                             "formType": "bulletinView",
                             "endpoint": `${process.env.WEBHOOKURL}/submit`,
-                            "trigger": `${trigger}`,
+                            "trigger": trigger,
                             "bulletinId": bulletinId
                         }
                     },
@@ -1341,7 +1355,7 @@ async function insertNewItem(bot, trigger, attachedForm) {
                         "data": {
                             "formType": "addBulletinItemsEvoke",
                             "endpoint": `${process.env.WEBHOOKURL}/submit`,
-                            "trigger": `${trigger}`,
+                            "trigger": trigger,
                             "bulletinId": bulletinId
                         }
                     }
@@ -1427,7 +1441,8 @@ async function editPermissionsEvoke(bot, trigger, attachedForm) {
                 "title": `Add Editors`,
                 "data": {
                     "bulletinId": `${bulletinId}`,
-                    "formType": `addEditorsEvoke`
+                    "formType": `addEditorsEvoke`,
+                    "trigger": trigger
                 }
             },
             {
@@ -1435,7 +1450,8 @@ async function editPermissionsEvoke(bot, trigger, attachedForm) {
                 "title": `Remove Selected Editors`,
                 "data": {
                     "bulletinId": `${bulletinId}`,
-                    "formType": `removeSelectedEditors`
+                    "formType": `removeSelectedEditors`,
+                    "trigger": trigger
                 }
             },
             {
@@ -1443,7 +1459,8 @@ async function editPermissionsEvoke(bot, trigger, attachedForm) {
                 "title": `Add Viewers`,
                 "data": {
                     "bulletinId": `${bulletinId}`,
-                    "formType": `addViewersEvoke`
+                    "formType": `addViewersEvoke`,
+                    "trigger": trigger
                 }
             }
         ]
@@ -1457,7 +1474,8 @@ async function editPermissionsEvoke(bot, trigger, attachedForm) {
                 "title": `Add Editors`,
                 "data": {
                     "bulletinId": `${bulletinId}`,
-                    "formType": `addEditorsEvoke`
+                    "formType": `addEditorsEvoke`,
+                    "trigger": trigger
                 }
             },
             {
@@ -1465,7 +1483,8 @@ async function editPermissionsEvoke(bot, trigger, attachedForm) {
                 "title": `Add Viewers`,
                 "data": {
                     "bulletinId": `${bulletinId}`,
-                    "formType": `addViewersEvoke`
+                    "formType": `addViewersEvoke`,
+                    "trigger": trigger
                 }
             }
         ]
@@ -1580,7 +1599,7 @@ async function addViewersEvoke(bot, trigger, attachedForm) {
                         "data": {
                             "formType": "newViewerString",
                             "endpoint": `${process.env.WEBHOOKURL}/submit`,
-                            "trigger": `${trigger}`,
+                            "trigger": trigger,
                             "bulletinId": bulletinId
                         }
                     },
@@ -1591,7 +1610,7 @@ async function addViewersEvoke(bot, trigger, attachedForm) {
                         "data": {
                             "formType": "newViewerStringandContinue",
                             "endpoint": `${process.env.WEBHOOKURL}/submit`,
-                            "trigger": `${trigger}`,
+                            "trigger": trigger,
                             "bulletinId": bulletinId
                         }
                     }
@@ -1671,7 +1690,11 @@ async function addViewerToBulletin(bot, trigger, attachedForm) {
 async function addEditorsEvoke(bot, trigger, attachedForm) {
 
     // Evoker Check
-    if (!(await utils.checkEvokerClicked(attachedForm, bot))) { console.log(`Evoker check failed.`); bot.dm(attachedForm.personId, `This is someone else's card! To get started with bulletins, use the 'bulletin' command!`); return; }
+    try {
+        if (!(await utils.checkEvokerClicked(attachedForm, bot))) { console.log(`Evoker check failed.`); bot.dm(attachedForm.personId, `This is someone else's card! To get started with bulletins, use the 'bulletin' command!`); return; }
+    } catch (e) {
+        console.log(e)
+    }
     // Evoker Check End
 
     const formData = trigger.attachmentAction.inputs;
@@ -1725,7 +1748,7 @@ async function addEditorsEvoke(bot, trigger, attachedForm) {
                         "data": {
                             "formType": "newEditorString",
                             "endpoint": `${process.env.WEBHOOKURL}/submit`,
-                            "trigger": `${trigger}`,
+                            "trigger": trigger,
                             "bulletinId": bulletinId
                         }
                     },
@@ -1736,7 +1759,7 @@ async function addEditorsEvoke(bot, trigger, attachedForm) {
                         "data": {
                             "formType": "newEditorStringandContinue",
                             "endpoint": `${process.env.WEBHOOKURL}/submit`,
-                            "trigger": `${trigger}`,
+                            "trigger": trigger,
                             "bulletinId": bulletinId
                         }
                     }
@@ -1911,7 +1934,7 @@ async function destroyBulletinEvoke(bot, trigger, attachedForm) {
                         "data": {
                             "formType": "editBulletinId",
                             "endpoint": `${process.env.WEBHOOKURL}/submit`,
-                            "trigger": `${trigger}`,
+                            "trigger": trigger,
                             "bulletinId": bulletinId
                         }
                     },
@@ -1922,7 +1945,7 @@ async function destroyBulletinEvoke(bot, trigger, attachedForm) {
                         "data": {
                             "formType": "nukeBulletin",
                             "endpoint": `${process.env.WEBHOOKURL}/submit`,
-                            "trigger": `${trigger}`,
+                            "trigger": trigger,
                             "bulletinId": bulletinId,
                             "oldBulletinName": `${await getBulletinNameFromId(bulletinId)}`
                         }
