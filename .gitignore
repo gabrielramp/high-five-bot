@@ -3,3 +3,8 @@ node_modules
 .env
 images
 submissions
+authorization/bulletinAuthorizations.JSON
+.env
+logs
+bulletins
+logs/commandLog.json

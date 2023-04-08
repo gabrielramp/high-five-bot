@@ -1,0 +1,39 @@
+{
+  "title": "This is my test bulletin!",
+  "unixLastEdited": "function getUnixTimestamp() {\r\n    return Math.floor(Date.now() / 1000);\r\n}",
+  "owner": "gaberami@cisco.com",
+  "editors": [
+    "gaberami@cisco.com"
+  ],
+  "viewers": [],
+  "items": [
+    {
+      "id": 1,
+      "content": "Something something do this"
+    },
+    {
+      "id": "d7bdb220a5",
+      "content": "yellow"
+    },
+    {
+      "id": "20e991d990",
+      "content": "green"
+    },
+    {
+      "id": "076dce9c0c",
+      "content": "orange"
+    },
+    {
+      "id": "4f55e154ac",
+      "content": "purple"
+    },
+    {
+      "id": "241fc72923",
+      "content": "yes"
+    }
+  ],
+  "viewerList": [
+    "gaberami@cisco.com",
+    "gabestestbot@webex.bot"
+  ]
+}

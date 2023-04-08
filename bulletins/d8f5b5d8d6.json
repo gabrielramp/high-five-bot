@@ -1,0 +1,19 @@
+{
+  "title": "This is a new bulletin for testing the viewing feature of my bulletins",
+  "unixLastEdited": "function getUnixTimestamp() {\r\n    return Math.floor(Date.now() / 1000);\r\n}",
+  "owner": "gaberami@cisco.com",
+  "editors": [
+    "gaberami@cisco.com"
+  ],
+  "viewers": [],
+  "items": [
+    {
+      "id": 1,
+      "content": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. In aliquam sem fringilla ut. Ullamcorper malesuada proin libero nunc consequat interdum varius sit. Ut consequat semper viverra nam libero justo. Nibh nisl condimentum id venenatis a condimentum. Dolor magna eget est lorem ipsum dolor sit amet. Diam maecenas ultricies mi eget mauris pharetra et. Augue eget arcu dictum varius duis at consectetur lorem donec. In cursus turpis massa tincidunt dui. Tortor at risus viverra adipiscing at in."
+    }
+  ],
+  "viewerList": [
+    "gaberami@cisco.com",
+    "gabestestbot@webex.bot"
+  ]
+}

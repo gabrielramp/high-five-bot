@@ -29,6 +29,15 @@ Table of Contents:
 
 [gas](https://github.com/gabrielramp/high-five-bot#gas)
 
+[bulletin](placeholder link)
+
+
+### help
+
+Highfive will respond to any mention without a valid command with the 'help' card, which can also be invoked with 'help'!
+
+![image](https://user-images.githubusercontent.com/86631042/230161089-240df1e0-0bd2-4178-a109-51c44a2322c2.png)
+
 ### getallemails
 
 Syntax: ``getallemails``
@@ -122,6 +131,50 @@ Receiving a reply to your gas:
 After sending a reply:
 
 ![image](https://user-images.githubusercontent.com/86631042/220246037-d7edefe5-e5db-4903-832b-4db57b43863e.png)
+
+### bulletin
+
+Syntax: ``bulletin``
+
+Bulletin is a powerful feature that allows you to concatenate important resources into individual 'Bulletin' boards for your team to access right from Webex! Images coming soon.
+
+![image](https://user-images.githubusercontent.com/86631042/230161602-46466b4d-a728-4abe-b447-02e6f4154537.png)
+
+Creating a Bulletin
+
+![image](https://user-images.githubusercontent.com/86631042/230206568-411fe742-e2b8-42b5-a830-049dc9f24427.png)
+
+![image](https://user-images.githubusercontent.com/86631042/230206804-0079ccc9-43a9-427c-9b37-29305da94f4a.png)
+
+Editing a Bulletin
+
+![image](https://user-images.githubusercontent.com/86631042/230208950-e4df7be0-d3e3-45f7-8dda-faca8c8aa704.png)
+
+Adding Items to a Bulletin
+
+![image](https://user-images.githubusercontent.com/86631042/230209025-aa217c58-ce15-4cb0-81e0-a81db18959ff.png)
+
+Viewing a Bulletin
+
+![image](https://user-images.githubusercontent.com/86631042/230209312-b7525117-8ece-4bb5-bf2f-931b7c9e5470.png)
+
+Editing Bulletin Permissions
+
+![image](https://user-images.githubusercontent.com/86631042/230211092-f531f582-2b74-4d6a-9a5e-0809bcaa74e2.png)
+
+Adding Editors to your Bulletin
+
+![image](https://user-images.githubusercontent.com/86631042/230211158-ad7e7dd6-6410-4972-9de2-946d489ceda3.png)
+
+Adding Viewers to your Bulletin
+
+![image](https://user-images.githubusercontent.com/86631042/230212612-a41e2886-c43d-4943-91d6-ca69cd38bf8f.png)
+
+Deleting your Bulletin
+
+![image](https://user-images.githubusercontent.com/86631042/230212708-88830a58-c64c-46de-b0bd-80795b3c0686.png)
+
+![image](https://user-images.githubusercontent.com/86631042/230212780-a51fbabf-b482-441d-80e4-786df4e3a741.png)
 
 ## Credits
 
