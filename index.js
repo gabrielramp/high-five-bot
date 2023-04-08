@@ -144,6 +144,17 @@ framework.hears (
   0
 )
 
+// 'guide' command
+framework.hears (
+  "guide",
+  async (bot, trigger) => {
+    try {utils.logCommandEvoke("guide");} catch (e) {console.log(e)}
+    bot.say(`Sending user guide...`)
+    bot.sayWithLocalFile('', './Highfive_User_Guide.pdf')
+  },
+  0
+)        
+
 // 'bulletin' command
 const bulletin = require('./bulletin.js');
 framework.hears (
@@ -490,7 +501,7 @@ framework.hears (
     // Call this function.
     Poll();
   },
-  "**poll**: Create a poll! Command inspired by Pollbot--they're not open-source, though!",
+  "**poll**: Create a poll! Supports multi-select, anonymous results, and text-response 'Other' option!",
   0
 )
 
@@ -1936,7 +1947,7 @@ function highfivehelp(bot) {
                                       "inlines": [
                                           {
                                               "type": "TextRun",
-                                              "text": "Create a poll! Command inspired by Pollbot--they're not open-source, though!"
+                                              "text": "Create a poll! Supports multi-select, anonymous results, and text-response 'Other' option!"
                                           }
                                       ],
                                       "spacing": "None"
@@ -2042,6 +2053,27 @@ function highfivehelp(bot) {
                                           {
                                               "type": "TextRun",
                                               "text": "Receive a list of all emails in this space."
+                                          }
+                                      ],
+                                      "spacing": "None"
+                                  },
+                                  {
+                                      "type": "RichTextBlock",
+                                      "inlines": [
+                                          {
+                                              "type": "TextRun",
+                                              "text": "📔 guide",
+                                              "fontType": "Monospace",
+                                              "weight": "bolder"
+                                          }
+                                      ]
+                                  },
+                                  {
+                                      "type": "RichTextBlock",
+                                      "inlines": [
+                                          {
+                                              "type": "TextRun",
+                                              "text": "Receive the PDF user guide for Highfive!"
                                           }
                                       ],
                                       "spacing": "None"

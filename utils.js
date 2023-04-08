@@ -59,11 +59,11 @@ async function logCommandEvoke(commandId) {
   fs.writeFileSync(commandLogFile, JSON.stringify(commandLogDataObject,null,2));
 }
 
-async function checkEvokerClicked(attachedForm, bot) {
-
+async function betterCheckEvokerClicked(attachedForm, bot) {
+  //console.log(`DEBUG: betterCheckEvokerClicked: attachedForm: ${JSON.stringify(attachedForm,null,2)}`)
   try {
     // First we get the Id of the trigger returned from the data in the card
-    let cardEvoker = attachedForm.inputs.trigger.person.id;
+    let cardEvoker = attachedForm.inputs.originalEvoker;
 
     // And the person that clicked the card.
     let cardClicker = attachedForm.personId;
@@ -85,4 +85,4 @@ async function checkEvokerClicked(attachedForm, bot) {
 
 }
 
-module.exports = {generaterandomString, getUnixTimestamp, getPersonDetails, logCommandEvoke, checkEvokerClicked};
+module.exports = {generaterandomString, getUnixTimestamp, getPersonDetails, logCommandEvoke, betterCheckEvokerClicked};
