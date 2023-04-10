@@ -5,6 +5,8 @@ This bot requires a running ngrok server for the Webex API webhook and is built 
 
 Any mention of a "card" or "adaptive card" is a reference to Microsoft Adaptive Cards, which are heavily utilized in this bot. You can find the reference for Microsoft Adaptive Card utilization with Webex bots [here](https://developer.webex.com/docs/api/guides/cards). 
 
+**Highfive can always be found online at CXHighFiveBot@webex.bot**!
+
 ## Features
 
 The bot can be messaged directly to evoke any of the available bot commands!
