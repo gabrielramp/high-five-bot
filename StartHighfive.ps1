@@ -1,6 +1,3 @@
-# Change the working directory to C:\high-five-bot
-Set-Location "C:\high-five-bot"
-
 # Define the log directory and filename format
 $logDir = "logs"
 $logFormat = "StartupMM-dd-yy_HHmm"

@@ -1,5 +1,17 @@
 {
-  "devcls": 1,
-  "poll": 1,
-  "freeform": 1
+  "hellohighfive": 6,
+  "poll": 23,
+  "gas": 23,
+  "gasReply": 14,
+  "pollResponse": 341,
+  "devcls": 10,
+  "highfivecard": 16,
+  "birthdaycard": 16,
+  "freeform": 4,
+  "help": 71,
+  "pollResultsRequest": 105,
+  "about": 6,
+  "getallemails": 5,
+  "bulletin": 20,
+  "guide": 2
 }

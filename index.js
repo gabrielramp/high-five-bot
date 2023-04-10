@@ -910,7 +910,7 @@ framework.on('attachmentAction', async (bot, trigger) => {
           let singleresult = 
           {
             type: "TextBlock",
-            text: `${option}: \n${count}`,
+            text: `${option}: ${count}`,
             weight: "Bolder",
             spacing: "Small",
             size: "Medium",
@@ -943,7 +943,7 @@ framework.on('attachmentAction', async (bot, trigger) => {
           let singleresult =
             {
               type: "TextBlock",
-              text: `${option}: \n0`,
+              text: `${option}: 0`,
               weight: "Bolder",
               spacing: "Small",
               size: "Medium",
@@ -1035,7 +1035,8 @@ framework.on('attachmentAction', async (bot, trigger) => {
                 "formTitle": `${formTitle}`,
                 "formType": "pollrequest",
                 "formId": `${pollId}`,
-                "endpoint": `${process.env.WEBHOOKURL}/submit`
+                "endpoint": `${process.env.WEBHOOKURL}/submit`,
+                "hasOther": formData.hasOther
               }
             }
           ]
