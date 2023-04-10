@@ -910,7 +910,7 @@ framework.on('attachmentAction', async (bot, trigger) => {
           let singleresult = 
           {
             type: "TextBlock",
-            text: `${option}: \n${count}`,
+            text: `${option}: ${count}`,
             weight: "Bolder",
             spacing: "Small",
             size: "Medium",
@@ -943,7 +943,7 @@ framework.on('attachmentAction', async (bot, trigger) => {
           let singleresult =
             {
               type: "TextBlock",
-              text: `${option}: \n0`,
+              text: `${option}: 0`,
               weight: "Bolder",
               spacing: "Small",
               size: "Medium",
@@ -1035,7 +1035,8 @@ framework.on('attachmentAction', async (bot, trigger) => {
                 "formTitle": `${formTitle}`,
                 "formType": "pollrequest",
                 "formId": `${pollId}`,
-                "endpoint": `${process.env.WEBHOOKURL}/submit`
+                "endpoint": `${process.env.WEBHOOKURL}/submit`,
+                "hasOther": formData.hasOther
               }
             }
           ]
@@ -2422,7 +2423,7 @@ framework.hears (
   /.*/,
   async (bot, trigger) => {
     console.log(`Catch-all handler: ${trigger.text}`);
-    bot.say(`Sorry, I not sure how to respond to "${trigger.text}".`)
+    bot.say(`Sorry, I'm not sure how to respond to "${trigger.text}".`)
       .then((highfivehelp(bot)))
       .catch(e =>
         console.error(`Problem in the unexpected command handler: ${e.message}`)
