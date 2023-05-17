@@ -1,11 +1,12 @@
 # high-five-bot
+
+# Highfive can always be found online at CXHighFiveBot@webex.bot!
+
 A Webex Teams bot built to enhance interaction and recognition within the 2023 January - June CXA Co-op experience!
 
 This bot requires a running ngrok server for the Webex API webhook and is built off of the Webex Node.js Framework by the Webex Community. You can view this framework [here](https://github.com/WebexCommunity/webex-node-bot-framework).
 
 Any mention of a "card" or "adaptive card" is a reference to Microsoft Adaptive Cards, which are heavily utilized in this bot. You can find the reference for Microsoft Adaptive Card utilization with Webex bots [here](https://developer.webex.com/docs/api/guides/cards). 
-
-**Highfive can always be found online at CXHighFiveBot@webex.bot**!
 
 ## Features
 
@@ -16,8 +17,6 @@ Within a space, the bot must be mentioned with an accompanied command to receive
 i.e to evoke the ``poll`` command in a space, type ``@mention poll``.
 
 Here is a list of available commands high-five-bot will handle!
-
-Table of Contents:
 
 [getallemails](https://github.com/gabrielramp/high-five-bot#getallemails)
 
@@ -31,7 +30,7 @@ Table of Contents:
 
 [gas](https://github.com/gabrielramp/high-five-bot#gas)
 
-[bulletin](placeholder link)
+[bulletin](https://github.com/gabrielramp/high-five-bot#bulletin)
 
 
 ### help
