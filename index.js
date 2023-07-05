@@ -475,6 +475,51 @@ framework.hears (
                 "title": "Create \"Other\" freeform option",
                 "id": "hasOther",
                 "value": "false"
+              },
+              {
+                "type": "Input.ChoiceSet",
+                "choices": [
+                  {
+                    "title": "Never",
+                    "value": "never"
+                },
+                {
+                    "title": "5 Minutes",
+                    "value": "5min"
+                },
+                {
+                    "title": "30 Minutes",
+                    "value": "30min"
+                },
+                {
+                    "title": "1 Hour",
+                    "value": "1hr"
+                },
+                {
+                    "title": "4 Hours",
+                    "value": "4hr"
+                },
+                {
+                    "title": "12 Hours",
+                    "value": "12hr"
+                },
+                {
+                    "title": "24 Hours",
+                    "value": "24hr"
+                },
+                {
+                    "title": "48 Hours",
+                    "value": "48hr"
+                },
+                {
+                    "title": "One week",
+                    "value": "1wk"
+                }
+                ],
+                "label": "Poll ends after:",
+                "placeholder": "Never",
+                "style": "compact",
+                "id": "endOffset",
               }
           ],
           actions: [
