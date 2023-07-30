@@ -481,39 +481,39 @@ framework.hears (
                 "choices": [
                   {
                     "title": "Never",
-                    "value": "never"
+                    "value": "1"
                 },
                 {
                     "title": "5 Minutes",
-                    "value": "5min"
+                    "value": "300"
                 },
                 {
                     "title": "30 Minutes",
-                    "value": "30min"
+                    "value": "1800"
                 },
                 {
                     "title": "1 Hour",
-                    "value": "1hr"
+                    "value": "3600"
                 },
                 {
                     "title": "4 Hours",
-                    "value": "4hr"
+                    "value": "14400"
                 },
                 {
                     "title": "12 Hours",
-                    "value": "12hr"
+                    "value": "43200"
                 },
                 {
                     "title": "24 Hours",
-                    "value": "24hr"
+                    "value": "86400"
                 },
                 {
                     "title": "48 Hours",
-                    "value": "48hr"
+                    "value": "172800"
                 },
                 {
                     "title": "One week",
-                    "value": "1wk"
+                    "value": "604800"
                 }
                 ],
                 "label": "Poll ends after:",
@@ -888,8 +888,9 @@ framework.on('attachmentAction', async (bot, trigger) => {
     case "pollResponse": {
       try {utils.logCommandEvoke("pollResponse");} catch (e) {console.log(e)}
       console.log("Handling 'pollResponse': Poll Selection Submission");
+      console.log(`submitting formData.endOffset: ${formData.endOffset}`)
       // Submit the response to have it saved
-      submitPollResponse(formData.formId, attachedForm.personId, formData.selectedOptions, formData.hasOther, formData.isMultiselect, formData.otherAnswer);
+      submitPollResponse(formData.formId, attachedForm.personId, formData.selectedOptions, formData.hasOther, formData.isMultiselect, formData.otherAnswer, formData.endOffset);
       break;
     }
 
@@ -1328,7 +1329,7 @@ framework.on('attachmentAction', async (bot, trigger) => {
       if (attachedForm.personId == formData.trigger.person.id) {
         console.log(`DEBUG: Received pollCreate type`);
 
-        //console.log(`DEBUG: Poll creates with options isAnonymous: ${formData.isAnonymous}, hasOther: ${formData.hasOther}, isMultiselect: ${formData.isMultiselect}`)
+        console.log(`DEBUG: Poll creates with options isAnonymous: ${formData.isAnonymous}, hasOther: ${formData.hasOther}, isMultiselect: ${formData.isMultiselect}, endOffset: ${formData.endOffset}`)
         //console.log(`DEBUG: Attributes when using Boolean: isAnonymous: ${Boolean(formData.isAnonymous)}, hasOther: ${Boolean(formData.hasOther)}, isMultiselect: ${Boolean(formData.isMultiselect)}`)
         // FIXING MOBILE TRUE/FALSE HANDLING:
         // For some reason, from mobile and ONLY mobile devices, card submission booleans are submitted as STRINGS from the Microsoft Adaptive Cards. Here, we fix that to continue with the rest of the code.
@@ -1491,6 +1492,7 @@ framework.on('attachmentAction', async (bot, trigger) => {
                   "hasOther": Boolean(formData.hasOther),
                   "isAnonymous": Boolean(formData.isAnonymous),
                   "choiceTitles": choiceTitles,
+                  "endOffset": formData.endOffset,
                   "formType": "pollResponse",
                   "formId": `${formData.formId}`,
                   "endpoint": `${process.env.WEBHOOKURL}/submit`
@@ -2287,14 +2289,15 @@ async function getPollResultsCard(pollId, choiceTitles) {
 }
 
 // submitPollResponse will take a poll response and put it into a file associated with its pollId.
-function submitPollResponse(pollId, personId, selectedOption, hasOther, isMultiselect, questionBox) {
+function submitPollResponse(pollId, personId, selectedOption, hasOther, isMultiselect, questionBox, endOffset) {
   console.log(`DEBUG: submitPollResponse received poll submission. Attempting to save these attributes:
   \npollId: ${pollId}
   \npersonId: ${personId}
   \nselectedOption: ${selectedOption}
   \nhasOther: ${hasOther}
   \nisMultiselect: ${isMultiselect}
-  \nquestionBox: ${questionBox}`);
+  \nquestionBox: ${questionBox}
+  \nendOffset: ${endOffset}`);
 
   const submissionPath = `./submissions/${pollId}.json`;
 
@@ -2303,6 +2306,17 @@ function submitPollResponse(pollId, personId, selectedOption, hasOther, isMultis
   // Check if submission file exists, if not, create an empty object
   if (fs.existsSync(submissionPath)) {
     submissions = JSON.parse(fs.readFileSync(submissionPath));
+  }
+  else {
+    let pollEndTime = 999999999;
+    if (endOffset != 1) {
+      let currTime = utils.getUnixTimestamp();
+      pollEndTime = currTime +  parseInt(endOffset, 10);
+    }
+    submissions = {
+      "endTimestamp": pollEndTime
+    };
+    console.log(`saving poll with timestamp ${pollEndTime}`);
   }
 
   // Create person's submission object
